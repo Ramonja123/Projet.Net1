@@ -1,0 +1,113 @@
+@page
+@model FrontendSGH.Pages.RegisterModel
+@{
+    ViewData["Title"] = "Inscription";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h1 class="text-center">@ViewData["Title"]</h1>
+        <h4 class="text-center text-muted">Créer un nouveau compte.</h4>
+        <hr />
+        
+        <form id="registerForm">
+            <div id="errorAlert" class="alert alert-danger d-none" role="alert"></div>
+            <div id="successAlert" class="alert alert-success d-none" role="alert"></div>
+
+            <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="Input_Nom" placeholder="Nom" required />
+                <label for="Input_Nom">Nom</label>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="Input_Prenom" placeholder="Prénom" required />
+                <label for="Input_Prenom">Prénom</label>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input type="email" class="form-control" id="Input_Email" placeholder="name@example.com" required />
+                <label for="Input_Email">Email</label>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="Input_Password" placeholder="Mot de passe" required />
+                <label for="Input_Password">Mot de passe</label>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="Input_ConfirmPassword" placeholder="Confirmer le mot de passe" required />
+                <label for="Input_ConfirmPassword">Confirmer le mot de passe</label>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="Input_Adresse" placeholder="Adresse" />
+                <label for="Input_Adresse">Adresse (Optionnel)</label>
+            </div>
+
+            <button id="registerSubmit" type="submit" class="w-100 btn btn-lg btn-primary">S'inscrire</button>
+        </form>
+        
+        <div class="mt-3 text-center">
+            <p>
+                <a href="/Login">Vous avez déjà un compte ? Connectez-vous</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById("registerForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        
+        const password = document.getElementById("Input_Password").value;
+        const confirm = document.getElementById("Input_ConfirmPassword").value;
+        const errorAlert = document.getElementById("errorAlert");
+        const successAlert = document.getElementById("successAlert");
+
+        errorAlert.classList.add("d-none");
+        successAlert.classList.add("d-none");
+
+        if (password !== confirm) {
+            errorAlert.innerText = "Les mots de passe ne correspondent pas.";
+            errorAlert.classList.remove("d-none");
+            return;
+        }
+
+        const payload = {
+            nom: document.getElementById("Input_Nom").value,
+            prenom: document.getElementById("Input_Prenom").value,
+            email: document.getElementById("Input_Email").value,
+            password: password,
+            adresse: document.getElementById("Input_Adresse").value,
+            userType: "Client"
+        };
+
+        try {
+            const response = await fetch("http://localhost:5004/api/Auth/RegisterClient", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                successAlert.innerText = "Inscription réussie ! Redirection...";
+                successAlert.classList.remove("d-none");
+                setTimeout(() => window.location.href = "/Login", 2000);
+            } else {
+                let msg = "Erreur d'inscription.";
+                if (data.errors) {
+                    msg = data.errors.map(e => e.description || e).join("<br/>");
+                } else if (typeof data === 'string') {
+                    msg = data;
+                }
+                errorAlert.innerHTML = msg;
+                errorAlert.classList.remove("d-none");
+            }
+        } catch (err) {
+            errorAlert.innerText = "Impossible de contacter le serveur.";
+            errorAlert.classList.remove("d-none");
+        }
+    });
+</script>

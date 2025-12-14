@@ -1,0 +1,9 @@
+# Ignorer les dossiers de build .NET
+**/bin/
+**/obj/
+.vs/
+.vscode/
+
+# Ignorer les fichiers utilisateurs
+*.user
+*.suo

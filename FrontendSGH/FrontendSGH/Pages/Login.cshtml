@@ -1,0 +1,82 @@
+@page
+@model FrontendSGH.Pages.LoginModel
+@{
+    ViewData["Title"] = "Connexion";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <section>
+            <form id="account" method="post">
+                <h2 class="text-center">Connexion</h2>
+                <hr />
+                
+                <div id="loginAlert" class="alert alert-danger d-none"></div>
+
+                <div class="form-floating mb-3">
+                    <input type="email" class="form-control" id="Input_Email" placeholder="name@example.com" required />
+                    <label for="Input_Email">Email</label>
+                </div>
+                
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="Input_Password" placeholder="Mot de passe" required />
+                    <label for="Input_Password">Mot de passe</label>
+                </div>
+
+                <div class="checkbox mb-3">
+                    <label class="form-label">
+                        <input class="form-check-input" type="checkbox" id="Input_RememberMe" />
+                        Se souvenir de moi
+                    </label>
+                </div>
+
+                <div>
+                    <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Se connecter</button>
+                </div>
+                
+                <div class="mt-3">
+                    <p>
+                        <a id="forgot-password" href="#">Mot de passe oublié ?</a>
+                    </p>
+                    <p>
+                        <a href="/Register">S'inscrire comme nouvel utilisateur</a>
+                    </p>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+
+<script>
+    document.getElementById("account").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById("Input_Email").value;
+        const password = document.getElementById("Input_Password").value;
+        const alertBox = document.getElementById("loginAlert");
+
+        try {
+            const response = await fetch("http://localhost:5004/api/Auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+                credentials: "include" 
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem("isLoggedIn", "true");
+                localStorage.setItem("userName", data.nom); 
+                
+                window.location.href = "/"; 
+            } else {
+                alertBox.innerText = "Échec de connexion : " + (data.message || "Vérifiez vos identifiants");
+                alertBox.classList.remove("d-none");
+            }
+        } catch (err) {
+            alertBox.innerText = "Erreur serveur.";
+            alertBox.classList.remove("d-none");
+        }
+    });
+</script>
