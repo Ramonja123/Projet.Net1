@@ -33,19 +33,15 @@ namespace BackendSGH.Controllers
             _context = context;
         }
 
-        // -------------------------------------------------------------------------
-        // INSCRIPTION CLIENT (Publique)
-        // -------------------------------------------------------------------------
+
         [HttpPost("RegisterClient")]
         [AllowAnonymous]
         public async Task<IActionResult> RegisterClient([FromBody] RegisterDto dto)
         {
             if (dto == null) return BadRequest("Requête vide.");
 
-            // On force le type "Client"
             string userType = "Client"; 
             
-            // Génération du pseudo
             string nomNettoye = dto.Nom.Trim();
             string prenomNettoye = dto.Prenom.Trim();
             string nomUtilisateurGenere = $"{prenomNettoye}{nomNettoye}";
@@ -57,15 +53,12 @@ namespace BackendSGH.Controllers
                 NomUtilisateur = nomUtilisateurGenere
             };
 
-            // Création Identity
             var result = await _userManager.CreateAsync(user, dto.Password);
             if (!result.Succeeded) return BadRequest(result.Errors);
 
-            // Rôle Identity
             if (!await _roleManager.RoleExistsAsync(userType)) await _roleManager.CreateAsync(new IdentityRole(userType));
             await _userManager.AddToRoleAsync(user, userType);
 
-            // Création Profil Client
             try 
             {
                 var client = new Client
@@ -82,91 +75,15 @@ namespace BackendSGH.Controllers
             }
             catch (Exception ex)
             {
-                // Rollback si la création du profil échoue
                 await _userManager.DeleteAsync(user);
                 return BadRequest($"Erreur création profil client : {ex.Message}");
             }
 
             return Ok(new { message = "Client inscrit avec succès", userId = user.Id, nomUtilisateur = nomUtilisateurGenere });
         }
-        // -------------------------------------------------------------------------
-        // CRÉATION RESPONSABLE 
-        // -------------------------------------------------------------------------
 
-        [HttpPost("CreateResponsable")]
-        [Authorize(Roles = "Responsable")] 
-        public async Task<IActionResult> CreateResponsable([FromBody] RegisterDto dto)
-        {
-            if (dto == null) return BadRequest("Requête vide.");
 
-            
-            // 1. Qui fait la demande ?
-            var currentUserId = _userManager.GetUserId(User);
-            var currentUserProfile = await _context.Responsables
-                .FirstOrDefaultAsync(r => r.ApplicationUserId == currentUserId);
 
-            if (currentUserProfile == null) return Unauthorized("Profil responsable introuvable.");
-
-            // 2. Quel est son pouvoir ?
-            bool isSuperAdmin = currentUserProfile.Role.EndsWith("/SUPERADMIN");
-            bool isAdmin = currentUserProfile.Role.EndsWith("/ADMIN");
-
-            // 3. Que veut-il créer ?
-            string nouveauRole = dto.RoleEmploye?.Trim() ?? "Employé Standard";
-            bool targetIsAdmin = nouveauRole.EndsWith("/ADMIN");
-            bool targetIsSuperAdmin = nouveauRole.EndsWith("/SUPERADMIN");
-
-            // 4. Règles de blocage
-            // Règle : Si je ne suis ni Admin ni SuperAdmin, je ne crée rien.
-            if (!isSuperAdmin && !isAdmin)
-            {
-                return StatusCode(403, "Accès refusé : Vous n'avez pas les droits de création.");
-            }
-
-            // Règle : Si je suis Admin (mais pas Super), je ne peux pas créer de chefs.
-            if (isAdmin && (targetIsAdmin || targetIsSuperAdmin))
-            {
-                return StatusCode(403, "Accès refusé : Seul un SUPERADMIN peut nommer un nouvel ADMIN ou SUPERADMIN.");
-            }
-
-            // B. CRÉATION DU COMPTE --------------------------------------------
-
-            string userType = "Responsable";
-            string nomNettoye = dto.Nom.Trim();
-            string prenomNettoye = dto.Prenom.Trim();
-            string nomUtilisateurGenere = $"{prenomNettoye}{nomNettoye}";
-
-            var user = new ApplicationUser 
-            { 
-                UserName = dto.Email, 
-                Email = dto.Email,
-                NomUtilisateur = nomUtilisateurGenere
-            };
-
-            var result = await _userManager.CreateAsync(user, dto.Password);
-            if (!result.Succeeded) return BadRequest(result.Errors);
-
-            if (!await _roleManager.RoleExistsAsync(userType)) await _roleManager.CreateAsync(new IdentityRole(userType));
-            await _userManager.AddToRoleAsync(user, userType);
-
-            try 
-            {
-                var responsable = new Responsable
-                {
-                    ApplicationUserId = user.Id,
-                    Role = nouveauRole // Le rôle validé par la logique de sécurité
-                };
-                _context.Responsables.Add(responsable);
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                await _userManager.DeleteAsync(user);
-                return BadRequest($"Erreur création employé : {ex.Message}");
-            }
-
-            return Ok(new { message = $"Employé créé avec succès. Rôle : {nouveauRole}", nomUtilisateur = nomUtilisateurGenere });
-        }
 
 
         [HttpPost("login")]
