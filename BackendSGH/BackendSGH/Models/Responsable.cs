@@ -14,5 +14,10 @@ namespace BackendSGH.Models
 
         [ForeignKey("ApplicationUserId")]
         public ApplicationUser ApplicationUser { get; set; }
+
+        public bool IsResponsableChambre { get; set; }
+
+        public int? ServiceId { get; set; }
+        public Service Service { get; set; }
     }
 }

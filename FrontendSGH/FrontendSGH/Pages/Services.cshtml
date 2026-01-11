@@ -1,0 +1,281 @@
+@page
+@model FrontendSGH.Pages.ServicesModel
+@{
+    ViewData["Title"] = "Gestion des Services";
+    Layout = "_AdminLayout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>@ViewData["Title"]</h2>
+        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#createModal" id="btnCreate">
+            <i class="bi bi-plus-circle"></i> Nouveau Service
+        </button>
+    </div>
+
+    <table class="table table-striped table-hover shadow-sm">
+        <thead class="table-warning">
+            <tr>
+                <th>Nom</th>
+                <th>Description</th>
+                <th>Prix</th>
+                <th>Type</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <tr><td colspan="5" class="text-center">Chargement...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Création -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un Service</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="mb-3">
+                        <label>Nom</label>
+                        <input type="text" class="form-control" id="NewNom" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Description</label>
+                        <textarea class="form-control" id="NewDesc" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label>Prix (Optionnel)</label>
+                        <input type="number" step="0.01" class="form-control" id="NewPrix" />
+                    </div>
+                    <div class="mb-3">
+                        <label>Type</label>
+                        <select class="form-select" id="NewType">
+                            <option value="Bien-être">Bien-être</option>
+                            <option value="Restauration">Restauration</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Images</label>
+                        <input type="file" class="form-control" id="NewImages" multiple accept="image/*" />
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100">Créer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modification -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier le Service</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="EditId" />
+                    <div class="mb-3">
+                        <label>Nom</label>
+                        <input type="text" class="form-control" id="EditNom" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Description</label>
+                        <textarea class="form-control" id="EditDesc" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label>Prix (Optionnel)</label>
+                        <input type="number" step="0.01" class="form-control" id="EditPrix" />
+                    </div>
+                    <div class="mb-3">
+                        <label>Type</label>
+                        <select class="form-select" id="EditType">
+                            <option value="Bien-être">Bien-être</option>
+                            <option value="Restauration">Restauration</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Nouvelles Images (Optionnel)</label>
+                        <input type="file" class="form-control" id="EditImages" multiple accept="image/*" />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://localhost:5004/api/Services";
+    const API_ME = "http://localhost:5004/api/Responsables/me";
+
+    let isAdmin = false;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await checkAdmin();
+        loadData();
+    });
+
+    async function checkAdmin() {
+        try {
+            const res = await fetch(API_ME, { credentials: "include" });
+            if (res.ok) {
+                const me = await res.json();
+                isAdmin = me.role.endsWith("/ADMIN");
+                if (!isAdmin) {
+                    document.getElementById("btnCreate").classList.add("d-none");
+                }
+            }
+        } catch (e) {}
+    }
+
+    async function loadData() {
+        const tableBody = document.getElementById("tableBody");
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error("Erreur chargement");
+            const data = await response.json();
+            
+            tableBody.innerHTML = "";
+            if (data.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center">Aucun service trouvé.</td></tr>`;
+                return;
+            }
+
+            data.forEach(item => {
+                let imageTag = "";
+                try {
+                    const images = JSON.parse(item.imagePath);
+                    if (Array.isArray(images) && images.length > 0) {
+                        imageTag = `<img src="http://localhost:5004${images[0]}" alt="Img" style="height: 40px; width: auto;" class="rounded me-1">`;
+                        if (images.length > 1) imageTag += `<small class="text-muted">+${images.length - 1}</small>`;
+                    }
+                } catch (e) {
+                    if (item.imagePath && !item.imagePath.startsWith("[")) {
+                         imageTag = `<img src="${item.imagePath}" alt="Img" style="height: 40px;" class="rounded">`;
+                    }
+                }
+
+                const prixDisplay = item.prix !== null ? `${item.prix} €` : "Gratuit / Sur devis";
+                const deleteBtn = isAdmin ? `<button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Supprimer</button>` : "";
+                
+                const row = `
+                    <tr>
+                        <td>
+                            ${imageTag}
+                            ${item.nom}
+                        </td>
+                        <td>${item.description}</td>
+                        <td>${prixDisplay}</td>
+                        <td>${item.typeService}</td>
+                        <td>
+                            ${deleteBtn}
+                            ${isAdmin ? `<button class="btn btn-sm btn-primary ms-2" onclick='openEditModal(${JSON.stringify(item)})'>Modifier</button>` : ""}
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        } catch (err) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">Erreur de connexion.</td></tr>`;
+        }
+    }
+    
+    // ... (rest of the script)
+    
+    document.getElementById("createForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        formData.append("nom", document.getElementById("NewNom").value);
+        formData.append("description", document.getElementById("NewDesc").value);
+        
+        const prixVal = document.getElementById("NewPrix").value;
+        if (prixVal) formData.append("prix", prixVal);
+        
+        formData.append("typeService", document.getElementById("NewType").value);
+        
+        const fileInput = document.getElementById("NewImages");
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append("Images", fileInput.files[i]);
+        }
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                body: formData,
+                credentials: "include"
+            });
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert("Erreur lors de la création.");
+            }
+        } catch (err) {
+            alert("Erreur serveur.");
+        }
+    });
+
+    async function deleteItem(id) {
+        if (!confirm("Voulez-vous vraiment supprimer ce service ?")) return;
+        try {
+            await fetch(`${API_URL}/${id}`, { method: "DELETE", credentials: "include" });
+            loadData();
+        } catch (err) {
+            alert("Erreur suppression.");
+        }
+    }
+
+    function openEditModal(item) {
+        document.getElementById("EditId").value = item.id;
+        document.getElementById("EditNom").value = item.nom;
+        document.getElementById("EditDesc").value = item.description;
+        document.getElementById("EditPrix").value = item.prix || "";
+        document.getElementById("EditType").value = item.typeService;
+        document.getElementById("EditImages").value = ""; // Clear file input
+        
+        new bootstrap.Modal(document.getElementById("editModal")).show();
+    }
+
+    document.getElementById("editForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById("EditId").value;
+        const formData = new FormData();
+        formData.append("nom", document.getElementById("EditNom").value);
+        formData.append("description", document.getElementById("EditDesc").value);
+        
+        const prixVal = document.getElementById("EditPrix").value;
+        if (prixVal) formData.append("prix", prixVal);
+        
+        formData.append("typeService", document.getElementById("EditType").value);
+        
+        const fileInput = document.getElementById("EditImages");
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append("Images", fileInput.files[i]);
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/${id}`, {
+                method: "PUT",
+                body: formData,
+                credentials: "include"
+            });
+            if (response.ok) {
+                location.reload();
+            } else {
+                const errorText = await response.text();
+                alert(`Erreur lors de la modification (${response.status}): ${errorText}`);
+            }
+        } catch (err) {
+            alert("Erreur serveur: " + err.message);
+        }
+    });
+</script>

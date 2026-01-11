@@ -19,6 +19,8 @@ public class TypeChambre
     public decimal Tarif { get; set; } 
 
     public string ImagePath { get; set; } 
+    
+    public string Vue { get; set; } 
 
     public ICollection<Chambre> Chambres { get; set; }
 }}

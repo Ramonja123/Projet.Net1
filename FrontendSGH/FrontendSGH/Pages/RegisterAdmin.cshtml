@@ -1,0 +1,77 @@
+@page
+@model FrontendSGH.Pages.RegisterAdminModel
+@{
+    ViewData["Title"] = "Création Administrateur";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h1 class="text-center text-danger">SUPER ADMIN CREATION</h1>
+        <hr />
+        
+        <form id="registerAdminForm">
+            <div id="alertBox" class="alert d-none" role="alert"></div>
+
+            <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="Nom" placeholder="Nom" required />
+                <label>Nom</label>
+            </div>
+            <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="Prenom" placeholder="Prénom" required />
+                <label>Prénom</label>
+            </div>
+            <div class="form-floating mb-3">
+                <input type="email" class="form-control" id="Email" placeholder="Email" required />
+                <label>Email</label>
+            </div>
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="Password" placeholder="Mot de passe" required />
+                <label>Mot de passe</label>
+            </div>
+
+            <button type="submit" class="w-100 btn btn-lg btn-danger">Créer Admin</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById("registerAdminForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        
+        const payload = {
+            nom: document.getElementById("Nom").value,
+            prenom: document.getElementById("Prenom").value,
+            email: document.getElementById("Email").value,
+            password: document.getElementById("Password").value,
+            userType: "Responsable",
+            roleEmploye: "Directeur/ADMIN" // Force Admin Role
+        };
+
+        const alertBox = document.getElementById("alertBox");
+
+        try {
+            const response = await fetch("http://localhost:5004/api/Auth/RegisterAdmin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alertBox.className = "alert alert-success";
+                alertBox.innerText = "Admin créé avec succès ! Redirection vers Login...";
+                alertBox.classList.remove("d-none");
+                setTimeout(() => window.location.href = "/Login", 2000);
+            } else {
+                alertBox.className = "alert alert-danger";
+                alertBox.innerText = "Erreur: " + (data.message || JSON.stringify(data));
+                alertBox.classList.remove("d-none");
+            }
+        } catch (err) {
+            alertBox.className = "alert alert-danger";
+            alertBox.innerText = "Erreur serveur.";
+            alertBox.classList.remove("d-none");
+        }
+    });
+</script>

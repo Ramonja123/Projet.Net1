@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin SGH</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+        :root {
+            --sidebar-width: 17rem;
+            --primary-gradient: linear-gradient(180deg, #2c3e50 0%, #4ca1af 100%);
+        }
+        body {
+            overflow-x: hidden;
+            background-color: #f8f9fa;
+        }
+        #wrapper {
+            display: flex;
+            width: 100%;
+        }
+        #sidebar-wrapper {
+            min-height: 100vh;
+            width: var(--sidebar-width);
+            margin-left: 0;
+            background: var(--primary-gradient);
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            position: fixed;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        #page-content-wrapper {
+            width: 100%;
+            margin-left: var(--sidebar-width);
+            transition: all 0.3s ease;
+        }
+        .sidebar-heading {
+            padding: 1.5rem;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: white;
+            letter-spacing: 0.5px;
+            background: rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .list-group-item {
+            background: transparent;
+            color: rgba(255,255,255,0.8);
+            border: none;
+            padding: 1rem 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .list-group-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            padding-left: 1.7rem;
+        }
+        .list-group-item i {
+            margin-right: 0.8rem;
+            font-size: 1.1rem;
+            vertical-align: middle;
+        }
+        .active-link {
+            background: rgba(255,255,255,0.2) !important;
+            color: white !important;
+            font-weight: 700;
+            border-left: 4px solid #fff !important;
+        }
+        .logout-btn {
+            margin-top: auto;
+            background: rgba(220, 53, 69, 0.8) !important;
+            color: white !important;
+        }
+        .logout-btn:hover {
+            background: rgba(220, 53, 69, 1) !important;
+        }
+        /* Mobile Toggle Logic */
+        @@media (max-width: 768px) {
+            #sidebar-wrapper {
+                margin-left: calc(-1 * var(--sidebar-width));
+            }
+            #page-content-wrapper {
+                margin-left: 0;
+            }
+            #wrapper.toggled #sidebar-wrapper {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="wrapper">
+        <!-- Sidebar -->
+        <div id="sidebar-wrapper">
+            <div class="sidebar-heading border-bottom border-light border-opacity-25">
+                <i class="bi bi-shield-lock-fill me-2"></i>Blue Kasbah
+            </div>
+            <div class="list-group list-group-flush pt-2 d-flex flex-column h-100 pb-4">
+                <a href="/AdminDashboard" class="list-group-item list-group-item-action">
+                    <i class="bi bi-speedometer2"></i>Vue d'ensemble
+                </a>
+                <a href="/Responsables" id="nav-responsables" class="list-group-item list-group-item-action d-none">
+                    <i class="bi bi-people-fill"></i>Responsables
+                </a>
+                <a href="/Chambres" id="nav-chambres" class="list-group-item list-group-item-action d-none">
+                    <i class="bi bi-door-open-fill"></i>Chambres
+                </a>
+                <a href="/TypeChambres" id="nav-types" class="list-group-item list-group-item-action d-none">
+                    <i class="bi bi-house-gear-fill"></i>Types Chambres
+                </a>
+                <a href="/Services" id="nav-services" class="list-group-item list-group-item-action d-none">
+                    <i class="bi bi-gear-fill"></i>Services
+                </a>
+                <a href="/DashboardReservations" id="nav-reservations" class="list-group-item list-group-item-action">
+                    <i class="bi bi-calendar-check-fill"></i>Réservations
+                </a>
+                
+                <div class="mt-auto">
+                    <a href="/Index" class="list-group-item list-group-item-action border-top border-light border-opacity-25">
+                        <i class="bi bi-box-arrow-left"></i>Retour Site
+                    </a>
+                    <a href="#" id="admin-logout" class="list-group-item list-group-item-action logout-btn">
+                        <i class="bi bi-power"></i>Déconnexion
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Page Content -->
+        <div id="page-content-wrapper">
+            <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4 px-4 py-3">
+                <div class="container-fluid">
+                   <button class="btn btn-outline-secondary d-md-none" id="menu-toggle"><i class="bi bi-list"></i></button>
+                    <span class="navbar-text ms-auto fw-bold text-dark" id="admin-user-display">
+                        <i class="bi bi-person-circle me-1 text-secondary"></i> Admin
+                    </span>
+                </div>
+            </nav>
+            <div class="container-fluid px-4">
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async function() {
+            // Mobile toggle
+            const toggle = document.getElementById("menu-toggle");
+            if(toggle) {
+                toggle.onclick = function(e) {
+                    e.preventDefault();
+                    document.getElementById("wrapper").classList.toggle("toggled");
+                }
+            }
+
+            const userName = localStorage.getItem("userName");
+            if (userName) {
+                document.getElementById("admin-user-display").innerHTML = `<i class="bi bi-person-circle me-1 text-primary"></i> ${userName}`;
+            }
+            
+            // Highlight active link
+            const path = window.location.pathname;
+            const links = document.querySelectorAll("#sidebar-wrapper a");
+            links.forEach(link => {
+                if (link.getAttribute("href") === path) {
+                    link.classList.add("active-link");
+                }
+            });
+
+            // Dynamic Sidebar Visibility
+            try {
+                const res = await fetch("http://localhost:5004/api/Responsables/me", { credentials: "include" });
+                if (res.ok) {
+                    const me = await res.json();
+                    const isAdmin = me.role.endsWith("/ADMIN");
+                    
+                    if (isAdmin) {
+                        document.getElementById("nav-responsables").classList.remove("d-none");
+                        document.getElementById("nav-chambres").classList.remove("d-none");
+                        document.getElementById("nav-types").classList.remove("d-none");
+                        document.getElementById("nav-services").classList.remove("d-none");
+                    } else {
+                        if (me.isResponsableChambre) {
+                            document.getElementById("nav-chambres").classList.remove("d-none");
+                            document.getElementById("nav-types").classList.remove("d-none");
+                        }
+                        if (me.serviceId) {
+                            document.getElementById("nav-services").classList.remove("d-none");
+                        }
+                    }
+                }
+            } catch (e) { console.error("Sidebar auth check failed", e); }
+            
+            // Logout Logic
+            document.getElementById("admin-logout").addEventListener("click", async function(e) {
+                e.preventDefault();
+                if (!confirm("Voulez-vous vraiment vous déconnecter ?")) return;
+                
+                try {
+                    await fetch("http://localhost:5004/api/Auth/logout", { method: "POST", credentials: "include" });
+                } catch (e) {}
+
+                localStorage.removeItem("isLoggedIn");
+                localStorage.removeItem("userRole");
+                localStorage.removeItem("userName");
+                window.location.href = "/Login";
+            });
+        });
+    </script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

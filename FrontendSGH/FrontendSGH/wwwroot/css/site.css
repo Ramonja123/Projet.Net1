@@ -1,3 +1,10 @@
+:root {
+    --color-main: #006D77;
+    --color-secondary: #83C5BE;
+    --color-bg: #EDF6F9;
+    --color-text: #264653;
+}
+
 html {
   font-size: 14px;
 }
@@ -8,15 +15,107 @@ html {
   }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
-}
-
 body {
-  margin-bottom: 60px;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1;
+    width: 100%;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--color-main);
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--color-main);
+    border-color: var(--color-main);
+}
+
+.btn-primary:hover {
+    background-color: #005860; /* Slightly darker teal */
+    border-color: #005860;
+}
+
+.btn-outline-primary {
+    color: var(--color-main);
+    border-color: var(--color-main);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--color-main);
+    color: white;
+}
+
+.btn-warning {
+    background-color: var(--color-secondary);
+    border-color: var(--color-secondary);
+    color: var(--color-text);
+}
+
+.btn-warning:hover {
+    background-color: #6fb3ac;
+    border-color: #6fb3ac;
+    color: var(--color-text);
+}
+
+/* Navbar Customization */
+.navbar-custom {
+    background-color: var(--color-main) !important;
+}
+
+.navbar-custom .navbar-brand,
+.navbar-custom .nav-link {
+    color: var(--color-bg) !important;
+}
+
+.navbar-custom .nav-link:hover {
+    color: var(--color-secondary) !important;
+}
+
+/* Footer */
+footer {
+    background-color: var(--color-text) !important;
+    color: var(--color-secondary) !important;
+}
+
+footer a {
+    color: var(--color-secondary) !important;
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: white !important;
+}
+
+/* Cards */
+.card {
+    border: none;
+    background-color: white;
+}
+
+.text-primary {
+    color: var(--color-main) !important;
+}
+
+.bg-light {
+    background-color: #e3f2f5 !important; /* Light version of background */
+}
+
+.bg-dark {
+    background-color: var(--color-text) !important;
+}
+
+/* Focus states */
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem var(--color-secondary);
 }

@@ -16,7 +16,7 @@ namespace BackendSGH.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.6")
+                .HasAnnotation("ProductVersion", "8.0.22")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -61,6 +61,12 @@ namespace BackendSGH.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("PasswordResetCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PasswordResetCodeExpires")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
 
@@ -97,9 +103,6 @@ namespace BackendSGH.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Etage")
-                        .HasColumnType("int");
 
                     b.Property<string>("Etat")
                         .HasColumnType("nvarchar(max)");
@@ -226,7 +229,7 @@ namespace BackendSGH.Migrations
                     b.Property<int>("ChambreId")
                         .HasColumnType("int");
 
-                    b.Property<int>("ClientId")
+                    b.Property<int?>("ClientId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("DateCreation")
@@ -237,6 +240,9 @@ namespace BackendSGH.Migrations
 
                     b.Property<DateTime>("DateFin")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("NomClientNonInscrit")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("PanierId")
                         .HasColumnType("int");
@@ -266,31 +272,29 @@ namespace BackendSGH.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ClientId")
+                    b.Property<int?>("ClientId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("DateReservation")
+                    b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
 
-                    b.Property<TimeSpan>("HeureDebut")
+                    b.Property<TimeSpan>("Heure")
                         .HasColumnType("time");
 
-                    b.Property<TimeSpan>("HeureFin")
-                        .HasColumnType("time");
+                    b.Property<string>("NomClientNonInscrit")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("PanierId")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("Prix")
+                    b.Property<decimal?>("Prix")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("Quantite")
-                        .HasColumnType("int");
 
                     b.Property<int>("ServiceId")
                         .HasColumnType("int");
 
                     b.Property<string>("Statut")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -316,13 +320,21 @@ namespace BackendSGH.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<bool>("IsResponsableChambre")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Role")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ServiceId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ApplicationUserId")
                         .IsUnique();
+
+                    b.HasIndex("ServiceId");
 
                     b.ToTable("Responsables");
                 });
@@ -338,10 +350,13 @@ namespace BackendSGH.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ImagePath")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Nom")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal>("Prix")
+                    b.Property<decimal?>("Prix")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("TypeService")
@@ -375,6 +390,9 @@ namespace BackendSGH.Migrations
 
                     b.Property<decimal>("Tarif")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Vue")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -576,9 +594,7 @@ namespace BackendSGH.Migrations
 
                     b.HasOne("BackendSGH.Models.Client", "Client")
                         .WithMany("ReservationsChambres")
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ClientId");
 
                     b.HasOne("BackendSGH.Models.Panier", "Panier")
                         .WithMany("ReservationChambres")
@@ -595,9 +611,7 @@ namespace BackendSGH.Migrations
                 {
                     b.HasOne("BackendSGH.Models.Client", "Client")
                         .WithMany()
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("ClientId");
 
                     b.HasOne("BackendSGH.Models.Panier", "Panier")
                         .WithMany("ReservationServices")
@@ -624,7 +638,13 @@ namespace BackendSGH.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("BackendSGH.Models.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId");
+
                     b.Navigation("ApplicationUser");
+
+                    b.Navigation("Service");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

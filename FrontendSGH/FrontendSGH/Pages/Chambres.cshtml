@@ -1,0 +1,360 @@
+@page
+@model FrontendSGH.Pages.ChambresModel
+@{
+    ViewData["Title"] = "Gestion des Chambres";
+    Layout = "_AdminLayout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>@ViewData["Title"]</h2>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createModal" id="btnCreate">
+            <i class="bi bi-plus-circle"></i> Nouvelle Chambre
+        </button>
+    </div>
+
+    <div id="alertBox" class="alert d-none" role="alert"></div>
+
+    <table class="table table-striped table-hover shadow-sm">
+        <thead class="table-success">
+            <tr>
+                <th style="cursor: pointer;" onclick="sortData('numero')">Numéro <i class="bi bi-arrow-down-up"></i></th>
+                <th style="cursor: pointer;" onclick="sortData('etat')">État <i class="bi bi-arrow-down-up"></i></th>
+                <th style="cursor: pointer;" onclick="sortData('type')">Type (ID) <i class="bi bi-arrow-down-up"></i></th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <tr><td colspan="5" class="text-center">Chargement...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Création -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter une Chambre</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="mb-3">
+                        <label>Numéro</label>
+                        <input type="text" class="form-control" id="NewNumero" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>État</label>
+                        <select class="form-select" id="NewEtat">
+                            <option value="Disponible">Disponible</option>
+                            <option value="Réservée">Réservée</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Type Chambre</label>
+                        <select class="form-select" id="NewTypeId" required>
+                            <option value="">Chargement...</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Créer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- Modal Modification -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier la Chambre</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="EditId" />
+                    <div class="mb-3">
+                        <label>Numéro</label>
+                        <input type="text" class="form-control" id="EditNumero" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>État</label>
+                        <select class="form-select" id="EditEtat">
+                            <option value="Disponible">Disponible</option>
+                            <option value="Réservée">Réservée</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Type Chambre</label>
+                        <select class="form-select" id="EditTypeId" required>
+                            <option value="">Chargement...</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://localhost:5004/api/Chambres";
+    const API_TYPES_URL = "http://localhost:5004/api/TypeChambres";
+    const API_ME = "http://localhost:5004/api/Responsables/me";
+
+    let isAdmin = false;
+    let allChambres = [];
+    let sortDirection = 1; // 1 for asc, -1 for desc
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await checkAdmin();
+        loadData();
+        loadTypes();
+    });
+
+    async function checkAdmin() {
+        try {
+            const res = await fetch(API_ME, { credentials: "include" });
+            if (res.ok) {
+                const me = await res.json();
+                isAdmin = me.role.endsWith("/ADMIN");
+                if (!isAdmin) {
+                    document.getElementById("btnCreate").classList.add("d-none");
+                }
+            }
+        } catch (e) {}
+    }
+
+    async function loadTypes() {
+        try {
+            const response = await fetch(API_TYPES_URL);
+            if (!response.ok) throw new Error("Erreur chargement types");
+            const data = await response.json();
+            
+            const populate = (id) => {
+                const select = document.getElementById(id);
+                if (!select) return;
+                select.innerHTML = "";
+                data.forEach(type => {
+                    const option = document.createElement("option");
+                    option.value = type.id;
+                    option.text = `${type.nom} (${type.tarif} €)`;
+                    select.appendChild(option);
+                });
+            };
+            
+            populate("NewTypeId");
+            populate("EditTypeId");
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function loadData() {
+        const tableBody = document.getElementById("tableBody");
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error("Erreur chargement");
+            allChambres = await response.json();
+            renderTable(allChambres);
+        } catch (err) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">Erreur de connexion.</td></tr>`;
+        }
+    }
+
+    function renderTable(data) {
+        const tableBody = document.getElementById("tableBody");
+        if (data.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center">Aucune chambre trouvée.</td></tr>`;
+            return;
+        }
+
+        let rows = "";
+        data.forEach(item => {
+            const typeName = item.typeChambre ? item.typeChambre.nom : item.typeChambreId;
+            const deleteBtn = isAdmin ? `<button class="btn btn-sm btn-danger ms-2" onclick="deleteItem(${item.id})">Supprimer</button>` : "";
+            
+            const stateSelect = `
+                <select class="form-select form-select-sm d-inline-block w-auto" onchange="changeState(${item.id}, this.value)">
+                    <option value="Disponible" ${item.etat === 'Disponible' ? 'selected' : ''}>Disponible</option>
+                    <option value="Réservée" ${item.etat === 'Réservée' ? 'selected' : ''}>Réservée</option>
+                </select>
+            `;
+
+            let badgeClass = "secondary";
+            if (item.etat === "Disponible") badgeClass = "success";
+            else if (item.etat === "Réservée") badgeClass = "warning text-dark";
+
+            rows += `
+                <tr>
+                    <td>${item.numero}</td>
+                    <td><span class="badge bg-${badgeClass}">${item.etat}</span></td>
+                    <td>${typeName}</td>
+                    <td>
+                        ${stateSelect}
+                        ${isAdmin ? `<button class="btn btn-sm btn-primary ms-2" onclick='openEditModal(${JSON.stringify(item)})'>Modifier</button>` : ""}
+                        ${deleteBtn}
+                    </td>
+                </tr>
+            `;
+        });
+        tableBody.innerHTML = rows;
+    }
+
+    let currentSortCol = '';
+    let currentSortAsc = true;
+
+    function sortData(col) {
+        if (currentSortCol === col) {
+            currentSortAsc = !currentSortAsc;
+        } else {
+            currentSortCol = col;
+            currentSortAsc = true;
+        }
+
+        allChambres.sort((a, b) => {
+            let valA = getVal(a, col);
+            let valB = getVal(b, col);
+
+            if (valA < valB) return currentSortAsc ? -1 : 1;
+            if (valA > valB) return currentSortAsc ? 1 : -1;
+            return 0;
+        });
+
+        renderTable(allChambres);
+        updateSortIcons(col, currentSortAsc);
+    }
+
+    function getVal(item, col) {
+        if (col === 'type') {
+            return item.typeChambre ? item.typeChambre.nom.toLowerCase() : '';
+        }
+        let v = item[col];
+        if (v == null) return "";
+        if (typeof v === 'string') return v.toLowerCase();
+        return v;
+    }
+
+    function updateSortIcons(col, asc) {
+        // Reset all icons
+        document.querySelectorAll('th i').forEach(i => i.className = 'bi bi-arrow-down-up');
+        
+        // Update active icon
+        const th = document.querySelector(`th[onclick="sortData('${col}')"]`);
+        if (th) {
+            const icon = th.querySelector('i');
+            if (icon) {
+                icon.className = asc ? 'bi bi-arrow-up' : 'bi bi-arrow-down';
+            }
+        }
+    }
+
+    async function changeState(id, newState) {
+        try {
+            const resGet = await fetch(`${API_URL}/${id}`);
+            const chambre = await resGet.json();
+            
+            chambre.etat = newState;
+            chambre.typeChambre = null; 
+
+            const resPut = await fetch(`${API_URL}/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(chambre),
+                credentials: "include"
+            });
+
+            if (resPut.ok) {
+                // Optional: Show success toast
+                // Update local data to reflect change without reload
+                const idx = allChambres.findIndex(c => c.id === id);
+                if (idx !== -1) {
+                    allChambres[idx].etat = newState;
+                    renderTable(allChambres);
+                }
+            } else {
+                alert("Erreur mise à jour état.");
+                loadData(); // Revert on error
+            }
+        } catch (e) { 
+            alert("Erreur serveur."); 
+            loadData();
+        }
+    }
+
+    document.getElementById("createForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const payload = {
+            numero: document.getElementById("NewNumero").value,
+            etat: document.getElementById("NewEtat").value,
+            typeChambreId: parseInt(document.getElementById("NewTypeId").value)
+        };
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                credentials: "include"
+            });
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert("Erreur lors de la création.");
+            }
+        } catch (err) {
+            alert("Erreur serveur.");
+        }
+    });
+
+    async function deleteItem(id) {
+        if (!confirm("Voulez-vous vraiment supprimer cette chambre ?")) return;
+        try {
+            await fetch(`${API_URL}/${id}`, { method: "DELETE", credentials: "include" });
+            loadData();
+        } catch (err) {
+            alert("Erreur suppression.");
+        }
+    }
+
+    function openEditModal(item) {
+        document.getElementById("EditId").value = item.id;
+        document.getElementById("EditNumero").value = item.numero;
+        document.getElementById("EditEtat").value = item.etat;
+        document.getElementById("EditTypeId").value = item.typeChambreId;
+        
+        new bootstrap.Modal(document.getElementById("editModal")).show();
+    }
+
+    document.getElementById("editForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const id = document.getElementById("EditId").value;
+        const payload = {
+            id: parseInt(id),
+            numero: document.getElementById("EditNumero").value,
+            etat: document.getElementById("EditEtat").value,
+            typeChambreId: parseInt(document.getElementById("EditTypeId").value)
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                credentials: "include"
+            });
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert("Erreur lors de la modification.");
+            }
+        } catch (err) {
+            alert("Erreur serveur.");
+        }
+    });
+</script>

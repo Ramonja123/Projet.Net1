@@ -1,0 +1,284 @@
+@page
+@model FrontendSGH.Pages.TypeChambresModel
+@{
+    ViewData["Title"] = "Gestion des Types de Chambres";
+    Layout = "_AdminLayout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>@ViewData["Title"]</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal" id="btnCreate">
+            <i class="bi bi-plus-circle"></i> Nouveau Type
+        </button>
+    </div>
+
+    <table class="table table-striped table-hover shadow-sm">
+        <thead class="table-primary">
+            <tr>
+                <th>Nom</th>
+                <th>Description</th>
+                <th>Capacité</th>
+                <th>Tarif</th>
+                <th>Vue</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <tr><td colspan="5" class="text-center">Chargement...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Création -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un Type de Chambre</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="mb-3">
+                        <label>Nom</label>
+                        <input type="text" class="form-control" id="NewNom" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Description</label>
+                        <textarea class="form-control" id="NewDesc"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label>Capacité (personnes)</label>
+                        <input type="number" class="form-control" id="NewCapacite" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Tarif (€)</label>
+                        <input type="number" step="0.01" class="form-control" id="NewTarif" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Vue</label>
+                        <select class="form-select" id="NewVue">
+                            <option value="Standard">Standard</option>
+                            <option value="Mer">Mer</option>
+                            <option value="Jardin">Jardin</option>
+                            <option value="Piscine">Piscine</option>
+                            <option value="Montagne">Montagne</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Images</label>
+                        <input type="file" class="form-control" id="NewImages" multiple accept="image/*" />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Créer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- Modal Modification -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier le Type de Chambre</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="EditId" />
+                    <input type="hidden" id="EditImagePath" />
+                    <div class="mb-3">
+                        <label>Nom</label>
+                        <input type="text" class="form-control" id="EditNom" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Description</label>
+                        <textarea class="form-control" id="EditDesc"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label>Capacité (personnes)</label>
+                        <input type="number" class="form-control" id="EditCapacite" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Tarif (€)</label>
+                        <input type="number" step="0.01" class="form-control" id="EditTarif" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Vue</label>
+                        <select class="form-select" id="EditVue">
+                            <option value="Standard">Standard</option>
+                            <option value="Mer">Mer</option>
+                            <option value="Jardin">Jardin</option>
+                            <option value="Piscine">Piscine</option>
+                            <option value="Montagne">Montagne</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://localhost:5004/api/TypeChambres";
+    const API_ME = "http://localhost:5004/api/Responsables/me";
+
+    let isAdmin = false;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await checkAdmin();
+        loadData();
+    });
+
+    async function checkAdmin() {
+        try {
+            const res = await fetch(API_ME, { credentials: "include" });
+            if (res.ok) {
+                const me = await res.json();
+                isAdmin = me.role.endsWith("/ADMIN");
+                if (!isAdmin) {
+                    document.getElementById("btnCreate").classList.add("d-none");
+                }
+            }
+        } catch (e) {}
+    }
+
+    async function loadData() {
+        const tableBody = document.getElementById("tableBody");
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error("Erreur chargement");
+            const data = await response.json();
+            
+            tableBody.innerHTML = "";
+            if (data.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center">Aucun type trouvé.</td></tr>`;
+                return;
+            }
+
+            data.forEach(item => {
+                // Try to parse JSON images
+                let imageTag = "";
+                try {
+                    const images = JSON.parse(item.imagePath);
+                    if (Array.isArray(images) && images.length > 0) {
+                        imageTag = `<img src="http://localhost:5004${images[0]}" alt="Img" style="height: 40px; width: auto;" class="rounded me-1">`;
+                        if (images.length > 1) imageTag += `<small class="text-muted">+${images.length - 1}</small>`;
+                    }
+                } catch (e) {
+                    // Fallback if not JSON
+                    if (item.imagePath) imageTag = `<img src="${item.imagePath}" alt="Img" style="height: 40px;" class="rounded">`;
+                }
+
+                const deleteBtn = isAdmin ? `<button class="btn btn-sm btn-danger" onclick="deleteItem(${item.id})">Supprimer</button>` : "";
+
+                const row = `
+                    <tr>
+                        <td>
+                            ${imageTag}
+                            ${item.nom}
+                        </td>
+                        <td>${item.description || "-"}</td>
+                        <td>${item.capacite}</td>
+                        <td>${item.tarif} €</td>
+                        <td>${item.vue || "-"}</td>
+                        <td>
+                            ${deleteBtn}
+                            ${isAdmin ? `<button class="btn btn-sm btn-primary ms-2" onclick='openEditModal(${JSON.stringify(item)})'>Modifier</button>` : ""}
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        } catch (err) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">Erreur de connexion.</td></tr>`;
+        }
+    }
+
+    document.getElementById("createForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        formData.append("Nom", document.getElementById("NewNom").value);
+        formData.append("Description", document.getElementById("NewDesc").value);
+        formData.append("Capacite", document.getElementById("NewCapacite").value);
+        formData.append("Tarif", document.getElementById("NewTarif").value);
+        formData.append("Vue", document.getElementById("NewVue").value);
+        
+        const fileInput = document.getElementById("NewImages");
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append("Images", fileInput.files[i]);
+        }
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                body: formData,
+                credentials: "include"
+            });
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert("Erreur lors de la création.");
+            }
+        } catch (err) {
+            alert("Erreur serveur.");
+        }
+    });
+
+    async function deleteItem(id) {
+        if (!confirm("Voulez-vous vraiment supprimer ce type ?")) return;
+        try {
+            await fetch(`${API_URL}/${id}`, { method: "DELETE", credentials: "include" });
+            loadData();
+        } catch (err) {
+            alert("Erreur suppression.");
+        }
+    }
+
+    function openEditModal(item) {
+        document.getElementById("EditId").value = item.id;
+        document.getElementById("EditNom").value = item.nom;
+        document.getElementById("EditDesc").value = item.description || "";
+        document.getElementById("EditCapacite").value = item.capacite;
+        document.getElementById("EditTarif").value = item.tarif;
+        document.getElementById("EditVue").value = item.vue || "Standard";
+        document.getElementById("EditImagePath").value = item.imagePath || "";
+        
+        new bootstrap.Modal(document.getElementById("editModal")).show();
+    }
+
+    document.getElementById("editForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const id = document.getElementById("EditId").value;
+        const payload = {
+            id: parseInt(id),
+            nom: document.getElementById("EditNom").value,
+            description: document.getElementById("EditDesc").value,
+            capacite: parseInt(document.getElementById("EditCapacite").value),
+            tarif: parseFloat(document.getElementById("EditTarif").value),
+            vue: document.getElementById("EditVue").value,
+            imagePath: document.getElementById("EditImagePath").value
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                credentials: "include"
+            });
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert("Erreur lors de la modification.");
+            }
+        } catch (err) {
+            alert("Erreur serveur.");
+        }
+    });
+</script>

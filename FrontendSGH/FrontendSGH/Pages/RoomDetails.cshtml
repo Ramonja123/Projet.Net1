@@ -1,0 +1,431 @@
+@page "/RoomDetails/{id:int}"
+@model FrontendSGH.Pages.RoomDetailsModel
+@{
+    ViewData["Title"] = "Détails de la Chambre";
+}
+
+<!-- Flatpickr CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+
+<div id="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+<div id="room-content" class="d-none">
+    <!-- Top Section: Images & Details -->
+    <div class="container py-5">
+        <div class="row mb-5">
+            <!-- Left: Image Gallery -->
+            <div class="col-lg-7">
+                <div id="image-gallery" class="mb-3 rounded overflow-hidden shadow-lg">
+                    <img id="main-image" src="" class="w-100 object-fit-cover" style="height: 500px;" alt="Room Image">
+                </div>
+                <div id="thumbnails" class="d-flex gap-2 overflow-auto pb-2"></div>
+            </div>
+
+            <!-- Right: Details -->
+            <div class="col-lg-5">
+                <h1 id="room-name" class="display-4 fw-bold mb-3 text-primary"></h1>
+                <div class="d-flex align-items-center mb-4">
+                    <span class="badge bg-warning text-dark fs-5 me-3 px-3 py-2 rounded-pill">
+                        <i class="bi bi-tag-fill me-2"></i><span id="room-price"></span>
+                    </span>
+                    <span class="text-muted fs-5">
+                        <i class="bi bi-people-fill me-2"></i><span id="room-capacity"></span>
+                    </span>
+                </div>
+                
+                <div class="mb-3">
+                    <span class="badge bg-info text-dark fs-6" id="room-vue-badge" style="display:none;">
+                        <i class="bi bi-eye-fill me-2"></i><span id="room-vue"></span>
+                    </span>
+                </div>
+                
+                <h4 class="fw-bold mb-3 border-bottom pb-2">Description</h4>
+                <p id="room-desc" class="text-muted lead" style="text-align: justify;"></p>
+                
+                <div class="mt-4 p-4 bg-light rounded-3 border">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Services Inclus</h5>
+                    <ul class="list-unstyled row">
+                        <li class="col-6 mb-2"><i class="bi bi-wifi me-2 text-primary"></i>Wifi Haut Débit</li>
+                        <li class="col-6 mb-2"><i class="bi bi-tv me-2 text-primary"></i>TV 4K</li>
+                        <li class="col-6 mb-2"><i class="bi bi-snow me-2 text-primary"></i>Climatisation</li>
+                        <li class="col-6 mb-2"><i class="bi bi-cup-hot me-2 text-primary"></i>Petit Déjeuner</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Section: Calendar & Reservation -->
+    <div class="bg-light py-5 border-top">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-12">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-header bg-dark text-white py-3">
+                            <h3 class="mb-0 text-center"><i class="bi bi-calendar-check me-2"></i>Disponibilités & Réservation</h3>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row align-items-center">
+                                <!-- Calendar -->
+                                <div class="col-lg-7 text-center border-end">
+                                    <h5 class="mb-3 text-muted">Sélectionnez vos dates de séjour</h5>
+                                    <div id="calendar-container" class="d-inline-block"></div>
+                                </div>
+
+                                <!-- Summary & Action -->
+                                <div class="col-lg-5 ps-lg-5">
+                                    <div id="reservation-summary" class="d-none">
+                                        <h4 class="fw-bold mb-4 text-primary">Votre Séjour</h4>
+                                        
+                                        <div class="d-flex justify-content-between mb-3 fs-5">
+                                            <span>Arrivée :</span>
+                                            <span id="summary-start" class="fw-bold"></span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-3 fs-5">
+                                            <span>Départ :</span>
+                                            <span id="summary-end" class="fw-bold"></span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-3 fs-5">
+                                            <span>Durée :</span>
+                                            <span class="fw-bold"><span id="summary-nights"></span> Nuit(s)</span>
+                                        </div>
+                                        
+                                        <hr>
+                                        
+                                        <div class="d-flex justify-content-between mb-4 display-6 fw-bold text-success">
+                                            <span>Total :</span>
+                                            <span id="summary-total"></span>
+                                        </div>
+
+                                        <button id="btn-add-cart" class="btn btn-warning btn-lg w-100 rounded-pill fw-bold shadow-sm">
+                                            <i class="bi bi-cart-plus-fill me-2"></i>Ajouter au Panier
+                                        </button>
+                                    </div>
+                                    
+                                    <div id="select-prompt" class="text-center py-5 text-muted">
+                                        <i class="bi bi-cursor-fill display-4 mb-3 d-block"></i>
+                                        <p class="fs-4">Veuillez sélectionner une plage de dates sur le calendrier.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Recommended Services Section -->
+    <div class="py-5 bg-white border-top">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold text-primary">Services Recommandés</h2>
+                <p class="text-muted">Complétez votre séjour avec nos services exclusifs.</p>
+            </div>
+            <div class="row g-4" id="recommended-services">
+                <div class="col-12 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-5">
+                <a href="/ServicesList" class="btn btn-outline-primary rounded-pill px-4">Voir tous les services</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
+
+<script>
+    const roomId = @Model.Id;
+    const API_URL = `http://localhost:5004/api/TypeChambres/${roomId}`;
+    const API_UNAVAILABLE = `http://localhost:5004/api/Reservations/unavailable-dates`;
+    const API_ADD_CART = `http://localhost:5004/api/Paniers/add`;
+    
+    let roomData = null;
+    let selectedDates = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        try {
+            // 1. Fetch Room Details
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error("Not found");
+            roomData = await response.json();
+            renderRoom(roomData);
+
+            // 2. Fetch Unavailable Dates (Next 6 months)
+            const today = new Date();
+            const next6Months = new Date();
+            next6Months.setMonth(today.getMonth() + 6);
+            
+            const startStr = today.toISOString().split('T')[0];
+            const endStr = next6Months.toISOString().split('T')[0];
+
+            const unavailRes = await fetch(`${API_UNAVAILABLE}?typeId=${roomId}&start=${startStr}&end=${endStr}`);
+            const unavailableDates = await unavailRes.json();
+
+            // 3. Init Calendar
+            initCalendar(unavailableDates);
+
+            // 4. Fetch Recommended Services
+            loadRecommendedServices();
+
+        } catch (e) {
+            document.getElementById("loading").innerHTML = '<p class="text-danger">Impossible de charger les détails.</p>';
+            console.error(e);
+        }
+    });
+
+    async function loadRecommendedServices() {
+        const container = document.getElementById("recommended-services");
+        try {
+            const response = await fetch("http://localhost:5004/api/Services");
+            const services = await response.json();
+            
+            if (services.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center text-muted">Aucun service recommandé pour le moment.</div>';
+                return;
+            }
+
+            // Take first 3 services for recommendation
+            const recommended = services.slice(0, 3);
+            
+            container.innerHTML = "";
+            recommended.forEach(service => {
+                let imagePath = "https://via.placeholder.com/800x400?text=Service";
+                if (service.imagePath) {
+                    try {
+                        const images = JSON.parse(service.imagePath);
+                        if (Array.isArray(images) && images.length > 0) imagePath = "http://localhost:5004" + images[0];
+                    } catch (e) {
+                        if (!service.imagePath.startsWith("[")) imagePath = "http://localhost:5004" + service.imagePath;
+                    }
+                }
+
+                const prixDisplay = service.prix ? `${service.prix} €` : "Sur devis";
+                
+                const card = `
+                    <div class="col-md-4">
+                        <a href="/ServicesList" class="text-decoration-none text-dark">
+                            <div class="card shadow-sm h-100 border-0 hover-card cursor-pointer">
+                                <div style="height: 200px; overflow: hidden;" class="rounded-top">
+                                    <img src="${imagePath}" class="w-100 h-100" style="object-fit: cover;" alt="${service.nom}">
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title fw-bold text-primary">${service.nom}</h5>
+                                    <p class="card-text text-muted small mb-2">${service.description ? service.description.substring(0, 80) + "..." : ""}</p>
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <span class="badge bg-light text-dark border">${service.typeService}</span>
+                                        <span class="fw-bold text-success">${prixDisplay}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                `;
+                container.innerHTML += card;
+            });
+
+        } catch (e) {
+            console.error("Error loading services", e);
+            container.innerHTML = '<div class="col-12 text-center text-danger">Impossible de charger les recommandations.</div>';
+        }
+    }
+
+    function renderRoom(data) {
+        document.getElementById("loading").classList.add("d-none");
+        document.getElementById("room-content").classList.remove("d-none");
+        
+        document.getElementById("room-name").innerText = data.nom;
+        document.getElementById("room-desc").innerText = data.description || "Aucune description.";
+        document.getElementById("room-capacity").innerText = `${data.capacite} Personnes`;
+        document.getElementById("room-price").innerText = `${data.tarif} € / Nuit`;
+        
+        if (data.vue) {
+            document.getElementById("room-vue").innerText = data.vue;
+            document.getElementById("room-vue-badge").style.display = "inline-block";
+        }
+
+        // Images
+        let images = [];
+        try {
+            images = JSON.parse(data.imagePath);
+        } catch(e) {
+            if(data.imagePath) images = [data.imagePath];
+        }
+
+        if (images.length > 0) {
+            const mainImg = document.getElementById("main-image");
+            const getSrc = (path) => path.startsWith("http") ? path : `http://localhost:5004${path}`;
+            
+            mainImg.src = getSrc(images[0]);
+            
+            if (images.length > 1) {
+                const thumbs = document.getElementById("thumbnails");
+                images.forEach(img => {
+                    const thumb = document.createElement("img");
+                    thumb.src = getSrc(img);
+                    thumb.className = "rounded border shadow-sm opacity-75 hover-opacity-100 transition";
+                    thumb.style = "width: 100px; height: 70px; object-fit: cover; cursor: pointer;";
+                    thumb.onclick = () => {
+                        mainImg.src = getSrc(img);
+                        // Reset opacity for all
+                        Array.from(thumbs.children).forEach(c => c.classList.add("opacity-75"));
+                        thumb.classList.remove("opacity-75");
+                    };
+                    thumbs.appendChild(thumb);
+                });
+                // Highlight first
+                thumbs.children[0].classList.remove("opacity-75");
+            }
+        } else {
+            document.getElementById("main-image").src = "https://via.placeholder.com/800x500?text=No+Image";
+        }
+    }
+
+    function initCalendar(disableDates) {
+        flatpickr("#calendar-container", {
+            inline: true,
+            mode: "range",
+            minDate: "today",
+            dateFormat: "Y-m-d",
+            locale: "fr",
+            disable: disableDates,
+            showMonths: 2,
+            onChange: function(selected, dateStr, instance) {
+                if (selected.length === 2) {
+                    selectedDates = selected;
+                    updateSummary(selected[0], selected[1]);
+                } else {
+                    document.getElementById("reservation-summary").classList.add("d-none");
+                    document.getElementById("select-prompt").classList.remove("d-none");
+                }
+            }
+        });
+    }
+
+    function updateSummary(start, end) {
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        const total = diffDays * roomData.tarif;
+
+        document.getElementById("summary-start").innerText = start.toLocaleDateString('fr-FR');
+        document.getElementById("summary-end").innerText = end.toLocaleDateString('fr-FR');
+        document.getElementById("summary-nights").innerText = diffDays;
+        document.getElementById("summary-total").innerText = `${total.toFixed(2)} €`;
+
+        document.getElementById("select-prompt").classList.add("d-none");
+        document.getElementById("reservation-summary").classList.remove("d-none");
+    }
+
+    document.getElementById("btn-add-cart").addEventListener("click", async () => {
+        const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+        if (!isLoggedIn) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Connexion requise',
+                text: 'Veuillez vous connecter pour réserver.',
+                confirmButtonColor: '#006D77'
+            }).then(() => {
+                window.location.href = "/Login";
+            });
+            return;
+        }
+
+        // Use local time to avoid timezone shifts
+        const formatDate = (d) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        const start = formatDate(selectedDates[0]);
+        const end = formatDate(selectedDates[1]);
+
+        try {
+            const res = await fetch(API_ADD_CART, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    typeId: roomId,
+                    startDate: start,
+                    endDate: end
+                })
+            });
+
+            if (res.ok) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Ajouté au panier !',
+                    text: 'Votre chambre a été ajoutée au panier.',
+                    confirmButtonColor: '#006D77'
+                });
+                // Redirect to Cart page (to be implemented)
+                // window.location.href = "/Panier"; 
+            } else {
+                if (res.status === 401) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Non connecté',
+                        text: 'Veuillez vous connecter pour réserver.',
+                        confirmButtonColor: '#d33'
+                    }).then(() => window.location.href = "/Login");
+                } else if (res.status === 403) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Accès refusé',
+                        text: 'Votre compte n\'a pas les permissions nécessaires (Rôle Client requis).',
+                        confirmButtonColor: '#d33'
+                    });
+                } else {
+                    const err = await res.text();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erreur',
+                        text: err,
+                        confirmButtonColor: '#d33'
+                    });
+                }
+            }
+        } catch (e) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erreur Serveur',
+                text: 'Impossible de contacter le serveur.',
+                confirmButtonColor: '#d33'
+            });
+        }
+    });
+</script>
+
+<style>
+    .flatpickr-calendar {
+        box-shadow: none !important;
+        border: none !important;
+    }
+    .hover-opacity-100:hover {
+        opacity: 1 !important;
+    }
+    .transition {
+        transition: opacity 0.2s;
+    }
+    /* Custom style for disabled dates */
+    .flatpickr-day.flatpickr-disabled, 
+    .flatpickr-day.flatpickr-disabled:hover {
+        background: #ffebee !important;
+        color: #c62828 !important;
+        border-color: #ffebee !important;
+        text-decoration: line-through;
+    }
+</style>

@@ -1,0 +1,367 @@
+@page
+@model FrontendSGH.Pages.DashboardReservationsModel
+@{
+    ViewData["Title"] = "Gestion des Réservations";
+    Layout = "_AdminLayout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center">
+            <h2 id="pageTitle" class="me-4 mb-0">Réservations</h2>
+            
+            <div id="scopeToggle" class="btn-group d-none">
+                <button type="button" class="btn btn-outline-dark active" id="btnScopeChambre" onclick="switchScope('chambre')">Chambres</button>
+                <button type="button" class="btn btn-outline-dark" id="btnScopeService" onclick="switchScope('service')">Services</button>
+            </div>
+        </div>
+
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
+            <i class="bi bi-plus-circle"></i> Nouvelle Réservation
+        </button>
+    </div>
+
+    <div id="alertBox" class="alert d-none" role="alert"></div>
+
+    <table class="table table-striped table-hover shadow-sm">
+        <thead class="table-dark">
+            <tr id="tableHeader">
+                <!-- Dynamically populated -->
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <tr><td colspan="6" class="text-center">Chargement...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nouvelle Réservation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <!-- Dynamic Fields based on Scope -->
+                    <div id="roomFields" class="d-none">
+                        <div class="mb-3">
+                            <label>Type de Chambre</label>
+                            <select class="form-select" id="RoomTypeSelect"></select>
+                        </div>
+                        <div class="mb-3">
+                            <label>Date Début</label>
+                            <input type="date" class="form-control" id="StartDate" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Date Fin</label>
+                            <input type="date" class="form-control" id="EndDate" />
+                        </div>
+                    </div>
+
+                    <div id="serviceFields" class="d-none">
+                        <div class="mb-3">
+                            <label>Service</label>
+                            <select class="form-select" id="ServiceSelect" disabled></select>
+                        </div>
+                        <div class="mb-3">
+                            <label>Date</label>
+                            <input type="date" class="form-control" id="ServiceDate" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Heure</label>
+                            <input type="time" class="form-control" id="ServiceTime" />
+                        </div>
+                    </div>
+
+                    <hr/>
+                    <h6>Client</h6>
+                    <div class="mb-3">
+                        <label>Client Inscrit (Optionnel)</label>
+                        <select class="form-select" id="ClientSelect">
+                            <option value="">-- Sélectionner --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Ou Nom Client (Non Inscrit)</label>
+                        <input type="text" class="form-control" id="ClientName" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Confirmer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_ME = "http://localhost:5004/api/Responsables/me";
+    const API_RESERVATIONS_CHAMBRE = "http://localhost:5004/api/Reservations/all";
+    const API_RESERVATIONS_SERVICE = "http://localhost:5004/api/Services/reservations";
+    const API_CREATE_CHAMBRE = "http://localhost:5004/api/Reservations/create-admin";
+    const API_CREATE_SERVICE = "http://localhost:5004/api/Services/reserve";
+    const API_COMPLETE_CHAMBRE = "http://localhost:5004/api/Reservations/complete/";
+    const API_COMPLETE_SERVICE = "http://localhost:5004/api/Services/complete/";
+    const API_CLIENTS = "http://localhost:5004/api/Reservations/clients";
+    const API_TYPES = "http://localhost:5004/api/TypeChambres";
+    const API_SERVICES = "http://localhost:5004/api/Services";
+
+    let currentScope = "chambre"; 
+    let myServiceId = null;
+    let isAdmin = false;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await determineScope();
+        loadDropdowns();
+    });
+
+    async function determineScope() {
+        try {
+            const res = await fetch(API_ME, { credentials: "include" });
+            if (!res.ok) {
+                alert("Erreur chargement profil.");
+                return;
+            }
+            const me = await res.json();
+            
+            if (me.role.endsWith("/ADMIN")) {
+                isAdmin = true;
+                document.getElementById("scopeToggle").classList.remove("d-none");
+                // Default remains chambre, user can toggle
+            } else if (me.serviceId) {
+                currentScope = "service";
+                myServiceId = me.serviceId;
+            } else {
+                currentScope = "chambre";
+            }
+
+            setupUI();
+            loadReservations();
+        } catch (e) { console.error(e); }
+    }
+
+    function switchScope(scope) {
+        if (currentScope === scope) return;
+        currentScope = scope;
+        
+        // Update Buttons
+        if(scope === 'chambre') {
+            document.getElementById("btnScopeChambre").classList.add("active");
+            document.getElementById("btnScopeService").classList.remove("active");
+        } else {
+            document.getElementById("btnScopeChambre").classList.remove("active");
+            document.getElementById("btnScopeService").classList.add("active");
+        }
+
+        setupUI();
+        loadReservations();
+        loadDropdowns();
+    }
+
+    function setupUI() {
+        const header = document.getElementById("tableHeader");
+        const roomFields = document.getElementById("roomFields");
+        const serviceFields = document.getElementById("serviceFields");
+        // const pageTitle = document.getElementById("pageTitle");
+
+        if (currentScope === "chambre") {
+            // pageTitle.innerText = "Réservations Chambres";
+            header.innerHTML = `
+                <th>Chambre</th>
+                <th>Type</th>
+                <th>Client</th>
+                <th>Dates</th>
+                <th>Prix</th>
+                <th>Statut</th>
+                <th>Action</th>
+            `;
+            roomFields.classList.remove("d-none");
+            serviceFields.classList.add("d-none");
+        } else if (currentScope === "service") {
+            // pageTitle.innerText = "Réservations Service";
+            header.innerHTML = `
+                <th>Service</th>
+                <th>Client</th>
+                <th>Date</th>
+                <th>Heure</th>
+                <th>Prix</th>
+                <th>Statut</th>
+                <th>Action</th>
+            `;
+            roomFields.classList.add("d-none");
+            serviceFields.classList.remove("d-none");
+        }
+    }
+
+    async function loadReservations() {
+        const tableBody = document.getElementById("tableBody");
+        const url = currentScope === "chambre" ? API_RESERVATIONS_CHAMBRE : API_RESERVATIONS_SERVICE;
+
+        try {
+            const res = await fetch(url, { credentials: "include" });
+            const data = await res.json();
+            
+            tableBody.innerHTML = "";
+            if (data.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="7" class="text-center">Aucune réservation.</td></tr>`;
+                return;
+            }
+
+            data.forEach(r => {
+                let row = "";
+                let actionBtn = "";
+                
+                if (r.statut !== "Terminée" && r.statut !== "Annulée") {
+                    actionBtn = `<button class="btn btn-sm btn-success" onclick="completeReservation(${r.id})"><i class="bi bi-check-lg me-1"></i>Terminer</button>`;
+                } else if (r.statut === "Terminée") {
+                    actionBtn = `<span class="badge bg-secondary">Archivée</span>`;
+                }
+
+                if (currentScope === "chambre") {
+                    row = `
+                        <tr>
+                            <td>${r.chambreNumero}</td>
+                            <td>${r.typeChambre}</td>
+                            <td>${r.clientNom} <br><small>${r.clientEmail}</small></td>
+                            <td>${new Date(r.dateDebut).toLocaleDateString()} - ${new Date(r.dateFin).toLocaleDateString()}</td>
+                            <td>${r.prixTotal} €</td>
+                            <td><span class="badge bg-primary">${r.statut}</span></td>
+                            <td>${actionBtn}</td>
+                        </tr>
+                    `;
+                } else {
+                    const clientDisplay = r.client ? (r.client.nom + " " + r.client.prenom) : (r.nomClientNonInscrit || "Inconnu");
+                    row = `
+                        <tr>
+                            <td>${r.service.nom}</td>
+                            <td>${clientDisplay}</td>
+                            <td>${new Date(r.date).toLocaleDateString()}</td>
+                            <td>${r.heure}</td>
+                            <td>${r.prix || '-'} €</td>
+                            <td><span class="badge bg-info text-dark">${r.statut}</span></td>
+                            <td>${actionBtn}</td>
+                        </tr>
+                    `;
+                }
+                tableBody.innerHTML += row;
+            });
+        } catch (e) {
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-danger text-center">Erreur chargement.</td></tr>`;
+        }
+    }
+
+    async function completeReservation(id) {
+        if(!confirm("Voulez-vous marquer cette réservation comme terminée ? Cela attribuera des points de fidélité au client.")) return;
+
+        const url = currentScope === "chambre" ? (API_COMPLETE_CHAMBRE + id) : (API_COMPLETE_SERVICE + id);
+        
+        try {
+            const res = await fetch(url, { 
+                method: "POST",
+                credentials: "include"
+            });
+            const data = await res.json();
+            
+            if(res.ok) {
+                alert(data.message);
+                loadReservations();
+            } else {
+                alert("Erreur: " + JSON.stringify(data));
+            }
+        } catch(e) { console.error(e); alert("Erreur serveur"); }
+    }
+
+    async function loadDropdowns() {
+        // Load Clients
+        try {
+            const res = await fetch(API_CLIENTS, { credentials: "include" });
+            const clients = await res.json();
+            const select = document.getElementById("ClientSelect");
+            clients.forEach(c => {
+                const opt = document.createElement("option");
+                opt.value = c.id;
+                opt.text = c.nomComplet + " (" + c.email + ")";
+                select.appendChild(opt);
+            });
+        } catch (e) {}
+
+        if (currentScope === "chambre") {
+            // Load Room Types
+            const res = await fetch(API_TYPES);
+            const types = await res.json();
+            const select = document.getElementById("RoomTypeSelect");
+            types.forEach(t => {
+                const opt = document.createElement("option");
+                opt.value = t.id;
+                opt.text = t.nom + " (" + t.tarif + "€)";
+                select.appendChild(opt);
+            });
+        } else if (currentScope === "service") {
+            // Load Services (or just set the current one)
+            const res = await fetch(API_SERVICES);
+            const services = await res.json();
+            const select = document.getElementById("ServiceSelect");
+            services.forEach(s => {
+                const opt = document.createElement("option");
+                opt.value = s.id;
+                opt.text = s.nom;
+                if (s.id === myServiceId) opt.selected = true;
+                select.appendChild(opt);
+            });
+            if (myServiceId) {
+                select.value = myServiceId;
+                select.disabled = true;
+            } else {
+                select.disabled = false; 
+            }
+        }
+    }
+
+    document.getElementById("createForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        
+        const clientId = document.getElementById("ClientSelect").value;
+        const clientName = document.getElementById("ClientName").value;
+
+        let payload = {};
+        let url = "";
+
+        if (currentScope === "chambre") {
+            payload = {
+                typeId: document.getElementById("RoomTypeSelect").value,
+                startDate: document.getElementById("StartDate").value,
+                endDate: document.getElementById("EndDate").value,
+                clientId: clientId ? parseInt(clientId) : null,
+                nomClientNonInscrit: clientName
+            };
+            url = API_CREATE_CHAMBRE;
+        } else {
+            payload = {
+                serviceId: document.getElementById("ServiceSelect").value,
+                date: document.getElementById("ServiceDate").value,
+                heure: document.getElementById("ServiceTime").value,
+                clientId: clientId ? parseInt(clientId) : null,
+                nomClientNonInscrit: clientName
+            };
+            url = API_CREATE_SERVICE;
+        }
+
+        try {
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                credentials: "include"
+            });
+            
+            const data = await res.json();
+            if (res.ok) {
+                alert("Réservation créée !");
+                location.reload();
+            } else {
+                alert("Erreur: " + (data.message || JSON.stringify(data)));
+            }
+        } catch (e) { alert("Erreur serveur"); }
+    });
+</script>

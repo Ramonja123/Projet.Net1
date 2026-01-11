@@ -1,0 +1,349 @@
+@page
+@model FrontendSGH.Pages.ResponsablesModel
+@{
+    ViewData["Title"] = "Gestion des Responsables";
+    Layout = "_AdminLayout";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>@ViewData["Title"]</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
+            <i class="bi bi-plus-circle"></i> Nouveau Responsable
+        </button>
+    </div>
+
+    <div id="alertBox" class="alert d-none" role="alert"></div>
+
+    <table class="table table-striped table-hover shadow-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>Nom d'utilisateur</th>
+                <th>Email</th>
+                <th>Rôle</th>
+                <th>Périmètre</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="responsablesTableBody">
+            <tr><td colspan="5" class="text-center">Chargement...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Création -->
+<div class="modal fade" id="createModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ajouter un Responsable</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="mb-3">
+                        <label>Nom</label>
+                        <input type="text" class="form-control" id="NewNom" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Prénom</label>
+                        <input type="text" class="form-control" id="NewPrenom" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Email</label>
+                        <input type="email" class="form-control" id="NewEmail" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Mot de passe</label>
+                        <input type="password" class="form-control" id="NewPassword" required />
+                    </div>
+                    <div class="mb-3">
+                        <label>Rôle</label>
+                        <select class="form-select" id="NewRole">
+                            <option value="Employé Standard">Employé Standard</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Directeur">Directeur</option>
+                        </select>
+                    </div>
+                    
+                    <hr/>
+                    <h6 class="mb-3">Affectation</h6>
+                    <div class="mb-3">
+                        <label>Type de Responsabilité</label>
+                        <select class="form-select" id="ScopeType" onchange="toggleServiceSelect()">
+                            <option value="chambre">Responsable Chambres</option>
+                            <option value="service">Responsable Service</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3 d-none" id="ServiceSelectDiv">
+                        <label>Service à gérer</label>
+                        <select class="form-select" id="ServiceId">
+                            <option value="">Sélectionner un service...</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Créer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modification -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier le Responsable</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="EditId" />
+                    <div class="mb-3">
+                        <label>Rôle</label>
+                        <select class="form-select" id="EditRole">
+                            <option value="Employé Standard">Employé Standard</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Directeur">Directeur</option>
+                        </select>
+                    </div>
+                    
+                    <hr/>
+                    <h6 class="mb-3">Affectation</h6>
+                    <div class="mb-3">
+                        <label>Type de Responsabilité</label>
+                        <select class="form-select" id="EditScopeType" onchange="toggleEditServiceSelect()">
+                            <option value="chambre">Responsable Chambres</option>
+                            <option value="service">Responsable Service</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3 d-none" id="EditServiceSelectDiv">
+                        <label>Service à gérer</label>
+                        <select class="form-select" id="EditServiceId">
+                            <option value="">Sélectionner un service...</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = "http://localhost:5004/api/Responsables";
+    const API_SERVICES = "http://localhost:5004/api/Services";
+
+    document.addEventListener("DOMContentLoaded", () => {
+        loadResponsables();
+        loadServices();
+    });
+
+    function toggleServiceSelect() {
+        const scope = document.getElementById("ScopeType").value;
+        const div = document.getElementById("ServiceSelectDiv");
+        if (scope === "service") {
+            div.classList.remove("d-none");
+        } else {
+            div.classList.add("d-none");
+        }
+    }
+
+    async function loadServices() {
+        try {
+            const res = await fetch(API_SERVICES);
+            const services = await res.json();
+            const select = document.getElementById("ServiceId");
+            services.forEach(s => {
+                const opt = document.createElement("option");
+                opt.value = s.id;
+                opt.text = s.nom;
+                select.appendChild(opt);
+            });
+        } catch (e) {
+            console.error("Erreur chargement services", e);
+        }
+    }
+
+    async function loadResponsables() {
+        const tableBody = document.getElementById("responsablesTableBody");
+        const alertBox = document.getElementById("alertBox");
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "GET",
+                credentials: "include" 
+            });
+
+            if (response.status === 401) {
+                window.location.href = "/Login";
+                return;
+            }
+            if (response.status === 403) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">Accès Refusé : Vous n'êtes pas Administrateur.</td></tr>`;
+                return;
+            }
+
+            if (!response.ok) throw new Error("Erreur chargement");
+
+            const data = await response.json();
+            tableBody.innerHTML = "";
+
+            if (data.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center">Aucun responsable trouvé.</td></tr>`;
+                return;
+            }
+
+            data.forEach(r => {
+                const row = `
+                    <tr>
+                        <td>${r.nomUtilisateur}</td>
+                        <td>${r.email}</td>
+                        <td><span class="badge bg-info text-dark">${r.role}</span></td>
+                        <td>${r.scope || 'Aucun'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" onclick="promote(${r.id})">Promouvoir Admin</button>
+                            <button class="btn btn-sm btn-primary" onclick='openEditModal(${JSON.stringify(r)})'>Modifier</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteRes(${r.id})">Supprimer</button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+
+        } catch (err) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-danger text-center">Erreur de connexion au serveur.</td></tr>`;
+        }
+    }
+
+    // Gestion du formulaire de création
+    document.getElementById("createForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        
+        const scopeType = document.getElementById("ScopeType").value;
+        const serviceId = document.getElementById("ServiceId").value;
+
+        const payload = {
+            nom: document.getElementById("NewNom").value,
+            prenom: document.getElementById("NewPrenom").value,
+            email: document.getElementById("NewEmail").value,
+            password: document.getElementById("NewPassword").value,
+            roleEmploye: document.getElementById("NewRole").value,
+            userType: "Responsable",
+            isResponsableChambre: scopeType === "chambre",
+            serviceId: scopeType === "service" && serviceId ? parseInt(serviceId) : null
+        };
+
+        try {
+            const response = await fetch(API_URL + "/Create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                credentials: "include"
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                alert("Créé avec succès !");
+                location.reload();
+            } else {
+                alert("Erreur: " + (data.message || JSON.stringify(data)));
+            }
+        } catch (err) {
+            alert("Erreur serveur.");
+        }
+    });
+
+    async function deleteRes(id) {
+        if (!confirm("Voulez-vous vraiment supprimer ce responsable ?")) return;
+        try {
+            await fetch(`${API_URL}/${id}`, { method: "DELETE", credentials: "include" });
+            loadResponsables();
+        } catch (e) { alert("Erreur suppression"); }
+    }
+
+    async function promote(id) {
+        if (!confirm("Promouvoir en Admin ?")) return;
+        try {
+            await fetch(`${API_URL}/Promote/${id}`, { method: "POST", credentials: "include" });
+            loadResponsables();
+        } catch (e) { alert("Erreur promotion"); }
+    }
+
+    function toggleEditServiceSelect() {
+        const scope = document.getElementById("EditScopeType").value;
+        const div = document.getElementById("EditServiceSelectDiv");
+        if (scope === "service") {
+            div.classList.remove("d-none");
+        } else {
+            div.classList.add("d-none");
+        }
+    }
+
+    async function openEditModal(item) {
+        document.getElementById("EditId").value = item.id;
+        document.getElementById("EditRole").value = item.role;
+        
+        // Populate services if not already
+        const serviceSelect = document.getElementById("EditServiceId");
+        if (serviceSelect.options.length <= 1) {
+             try {
+                const res = await fetch(API_SERVICES);
+                const services = await res.json();
+                services.forEach(s => {
+                    const opt = document.createElement("option");
+                    opt.value = s.id;
+                    opt.text = s.nom;
+                    serviceSelect.appendChild(opt);
+                });
+            } catch (e) {}
+        }
+
+        if (item.isResponsableChambre) {
+            document.getElementById("EditScopeType").value = "chambre";
+            document.getElementById("EditServiceSelectDiv").classList.add("d-none");
+        } else {
+            document.getElementById("EditScopeType").value = "service";
+            document.getElementById("EditServiceSelectDiv").classList.remove("d-none");
+            document.getElementById("EditServiceId").value = item.serviceId || "";
+        }
+        
+        new bootstrap.Modal(document.getElementById("editModal")).show();
+    }
+
+    document.getElementById("editForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const id = document.getElementById("EditId").value;
+        const scopeType = document.getElementById("EditScopeType").value;
+        const serviceId = document.getElementById("EditServiceId").value;
+
+        const payload = {
+            role: document.getElementById("EditRole").value,
+            isResponsableChambre: scopeType === "chambre",
+            serviceId: scopeType === "service" && serviceId ? parseInt(serviceId) : null
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                credentials: "include"
+            });
+
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert("Erreur modification.");
+            }
+        } catch (err) {
+            alert("Erreur serveur.");
+        }
+    });
+</script>

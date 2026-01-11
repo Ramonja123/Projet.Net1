@@ -1,10 +1,310 @@
 ﻿@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Accueil - Blue Kasbah Resort";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<!-- Hero Section -->
+<div class="hero-section position-relative text-white mb-5 overflow-hidden">
+    <video autoplay muted loop playsinline class="position-absolute w-100 h-100" style="object-fit: cover; z-index: 0; top: 0; left: 0;">
+        <source src="~/2025-12-28 17-20-28_Trim.mp4" type="video/mp4">
+    </video>
+    <div class="hero-overlay position-absolute w-100 h-100" style="z-index: 1;"></div>
+    <div class="container position-relative h-100 d-flex flex-column justify-content-center align-items-center text-center" style="z-index: 2;">
+        <h1 class="display-2 fw-bold mb-4 animate-up">Bienvenue au Blue Kasbah Resort</h1>
+        <p class="lead fs-3 mb-5 animate-up delay-1">L'élégance côtière et le confort moderne.</p>
+        <a href="#rooms" class="btn btn-lg btn-warning px-5 py-3 rounded-pill shadow-lg animate-up delay-2 fw-bold">Réserver Maintenant</a>
+    </div>
 </div>
+
+<!-- Search Availability Bar (Visual) -->
+<div class="container position-relative" style="margin-top: -80px; z-index: 10;">
+    <div class="card shadow-lg border-0 rounded-3 p-4">
+        <form class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Arrivée</label>
+                <input type="date" class="form-control" id="dateArrivee">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Départ</label>
+                <input type="date" class="form-control" id="dateDepart">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Voyageurs</label>
+                <select class="form-select" id="capacite">
+                    <option value="1">1 Adulte</option>
+                    <option value="2">2 Adultes</option>
+                    <option value="4">Famille</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="button" class="btn btn-primary w-100 py-2" onclick="searchRooms()">Vérifier Disponibilité</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Featured Rooms Section (Carousel) -->
+<section id="rooms" class="py-5 mt-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold display-5 text-primary">Nos Chambres d'Exception</h2>
+            <p class="text-muted lead">Découvrez nos suites et chambres conçues pour votre confort.</p>
+        </div>
+        
+        <div id="roomsCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner" id="rooms-carousel-inner">
+                <!-- Content loaded via JS -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#roomsCarousel" data-bs-slide="prev" style="width: 5%;">
+                <span class="carousel-control-prev-icon bg-dark rounded-circle p-3" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#roomsCarousel" data-bs-slide="next" style="width: 5%;">
+                <span class="carousel-control-next-icon bg-dark rounded-circle p-3" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Services Section (Carousel) -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold display-5">Nos Services Premium</h2>
+        </div>
+        
+        <div id="servicesCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner" id="services-carousel-inner">
+                 <!-- Content loaded via JS -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#servicesCarousel" data-bs-slide="prev" style="width: 5%;">
+                <span class="carousel-control-prev-icon bg-dark rounded-circle p-3" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#servicesCarousel" data-bs-slide="next" style="width: 5%;">
+                <span class="carousel-control-next-icon bg-dark rounded-circle p-3" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Footer CTA -->
+<section class="py-5 bg-dark text-white text-center">
+    <div class="container">
+        <h2 class="mb-4" style="color: var(--color-secondary);">Prêt pour un séjour inoubliable ?</h2>
+        <p class="lead mb-4 text-white-50">Réservez directement sur notre site et bénéficiez des meilleurs tarifs garantis.</p>
+        <a href="/Register" class="btn btn-outline-light btn-lg rounded-pill px-5">Créer un Compte</a>
+    </div>
+</section>
+
+<style>
+    /* Hero Styles */
+    .hero-section {
+        height: 85vh;
+    }
+    .hero-overlay {
+        background: rgba(0, 0, 0, 0.7); /* Strong black overlay for maximum contrast */
+    }
+    
+    /* Animations */
+    .animate-up {
+        opacity: 0;
+        transform: translateY(30px);
+        animation: fadeInUp 0.8s ease-out forwards;
+    }
+    .delay-1 { animation-delay: 0.2s; }
+    .delay-2 { animation-delay: 0.4s; }
+
+    @@keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Card Hover Effect */
+    .hover-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Room Image */
+    .room-img {
+        height: 250px;
+        object-fit: cover;
+    }
+    
+    /* Carousel Controls */
+    .carousel-control-prev-icon,
+    .carousel-control-next-icon {
+        background-size: 50%, 50%;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadRooms();
+        await loadServices();
+    });
+
+    async function loadRooms() {
+        const container = document.getElementById("rooms-carousel-inner");
+        try {
+            const response = await fetch("http://localhost:5004/api/TypeChambres");
+            const rooms = await response.json();
+            
+            if (rooms.length === 0) {
+                container.innerHTML = '<div class="text-center">Aucune chambre disponible.</div>';
+                return;
+            }
+
+            container.innerHTML = "";
+            const chunkSize = 3;
+            for (let i = 0; i < rooms.length; i += chunkSize) {
+                const chunk = rooms.slice(i, i + chunkSize);
+                const isActive = i === 0 ? "active" : "";
+                
+                let cardsHtml = "";
+                chunk.forEach(room => {
+                    let imagePath = "https://via.placeholder.com/400x250";
+                    try {
+                        const images = JSON.parse(room.imagePath);
+                        if (images.length > 0) imagePath = "http://localhost:5004" + images[0];
+                    } catch(e) {
+                        if (room.imagePath) imagePath = "http://localhost:5004" + room.imagePath;
+                    }
+
+                    cardsHtml += `
+                        <div class="col-md-4">
+                            <div class="card h-100 shadow-sm hover-card overflow-hidden">
+                                <img src="${imagePath}" class="card-img-top room-img" alt="${room.nom}">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h5 class="card-title fw-bold mb-0">${room.nom}</h5>
+                                        <span class="badge bg-warning text-dark">${room.tarif} €</span>
+                                    </div>
+                                    <div class="mb-2">
+                                        ${room.vue ? `<span class="badge bg-info text-dark"><i class="bi bi-eye-fill me-1"></i>${room.vue}</span>` : ''}
+                                    </div>
+                                    <p class="card-text text-muted small">${room.description || "Description non disponible."}</p>
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <small class="text-muted"><i class="bi bi-people-fill"></i> ${room.capacite} Personnes</small>
+                                        <a href="/RoomDetails/${room.id}" class="btn btn-outline-primary btn-sm rounded-pill">Détails</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML += `
+                    <div class="carousel-item ${isActive}">
+                        <div class="row g-4 px-5">
+                            ${cardsHtml}
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            container.innerHTML = '<div class="text-center text-danger">Impossible de charger les chambres.</div>';
+        }
+    }
+
+    async function loadServices() {
+        const container = document.getElementById("services-carousel-inner");
+        try {
+            const response = await fetch("http://localhost:5004/api/Services");
+            const services = await response.json();
+            
+            if (services.length === 0) {
+                container.innerHTML = '<div class="text-center">Aucun service disponible.</div>';
+                return;
+            }
+
+            container.innerHTML = "";
+            const chunkSize = 3;
+            for (let i = 0; i < services.length; i += chunkSize) {
+                const chunk = services.slice(i, i + chunkSize);
+                const isActive = i === 0 ? "active" : "";
+                
+                let cardsHtml = "";
+                chunk.forEach(service => {
+                    const icon = service.typeService === "Restaurant" ? "bi-cup-hot-fill" : 
+                                 service.typeService === "Spa" ? "bi-water" : "bi-wifi";
+                    
+                    let imageHtml = `<div class="display-4 text-primary mb-3"><i class="bi ${icon}"></i></div>`;
+                    if (service.imagePath) {
+                        try {
+                            const images = JSON.parse(service.imagePath);
+                            if (Array.isArray(images) && images.length > 0) {
+                                imageHtml = `<img src="http://localhost:5004${images[0]}" class="img-fluid rounded mb-3" style="height: 200px; object-fit: cover;" alt="${service.nom}">`;
+                            }
+                        } catch (e) {
+                            if (!service.imagePath.startsWith("[")) {
+                                imageHtml = `<img src="http://localhost:5004${service.imagePath}" class="img-fluid rounded mb-3" style="height: 200px; object-fit: cover;" alt="${service.nom}">`;
+                            }
+                        }
+                    }
+
+                    cardsHtml += `
+                        <div class="col-md-4">
+                            <a href="/ServiceDetails/${service.id}" class="text-decoration-none text-dark">
+                                <div class="p-4 bg-white rounded-3 shadow-sm h-100 hover-card cursor-pointer">
+                                    ${imageHtml}
+                                    <h4 class="mb-2">${service.nom}</h4>
+                                    <p class="text-muted small">${service.description || "Service de qualité."}</p>
+                                    <div class="mt-auto pt-3">
+                                        <span class="badge bg-light text-dark border me-1">${service.typeService}</span>
+                                        ${service.prix ? `<span class="badge bg-success">${service.prix} €</span>` : '<span class="badge bg-secondary">Gratuit/Devis</span>'}
+                                    </div>
+                                    <div class="mt-3 text-primary fw-bold small">
+                                        En savoir plus <i class="bi bi-arrow-right ms-1"></i>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML += `
+                    <div class="carousel-item ${isActive}">
+                        <div class="row g-4 px-5 text-center">
+                            ${cardsHtml}
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (e) {
+             container.innerHTML = '<div class="text-center text-danger">Impossible de charger les services.</div>';
+        }
+    }
+
+    function searchRooms() {
+        const dateArrivee = document.getElementById('dateArrivee').value;
+        const dateDepart = document.getElementById('dateDepart').value;
+        const capacite = document.getElementById('capacite').value;
+
+        if (!dateArrivee || !dateDepart) {
+            alert("Veuillez sélectionner les dates d'arrivée et de départ.");
+            return;
+        }
+
+        window.location.href = `/Rooms?dateArrivee=${dateArrivee}&dateDepart=${dateDepart}&capacite=${capacite}`;
+    }
+</script>

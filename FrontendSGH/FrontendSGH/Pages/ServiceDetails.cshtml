@@ -1,0 +1,242 @@
+@page "/ServiceDetails/{id:int}"
+@model FrontendSGH.Pages.ServiceDetailsModel
+@{
+    ViewData["Title"] = "Détails du Service";
+}
+
+<!-- Flatpickr CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+
+<div id="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+
+<div id="service-content" class="d-none">
+    <div class="container py-5">
+        <div class="row mb-5">
+            <!-- Left: Image Gallery -->
+            <div class="col-lg-7">
+                <div id="image-gallery" class="mb-3 rounded overflow-hidden shadow-lg">
+                    <img id="main-image" src="" class="w-100 object-fit-cover" style="height: 500px;" alt="Service Image">
+                </div>
+                <div id="thumbnails" class="d-flex gap-2 overflow-auto pb-2"></div>
+            </div>
+
+            <!-- Right: Details -->
+            <div class="col-lg-5">
+                <h1 id="service-name" class="display-4 fw-bold mb-3 text-primary"></h1>
+                
+                <div class="d-flex align-items-center mb-4">
+                    <span class="badge bg-warning text-dark fs-5 me-3 px-3 py-2 rounded-pill" id="price-badge">
+                        <i class="bi bi-tag-fill me-2"></i><span id="service-price"></span>
+                    </span>
+                    <span class="badge bg-info text-dark fs-5 px-3 py-2 rounded-pill">
+                        <i class="bi bi-bookmark-star-fill me-2"></i><span id="service-type"></span>
+                    </span>
+                </div>
+                
+                <h4 class="fw-bold mb-3 border-bottom pb-2">Description</h4>
+                <p id="service-desc" class="text-muted lead" style="text-align: justify;"></p>
+                
+                <!-- Reservation Form -->
+                <div class="mt-5 p-4 bg-light rounded-3 border shadow-sm">
+                    <h3 class="fw-bold mb-4 text-center"><i class="bi bi-calendar-check me-2"></i>Réserver ce Service</h3>
+                    
+                    <form id="reservationForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Date</label>
+                            <input type="text" class="form-control bg-white" id="resDate" placeholder="Sélectionnez une date" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Heure</label>
+                            <input type="text" class="form-control bg-white" id="resTime" placeholder="Sélectionnez une heure" required>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold">
+                                <i class="bi bi-check-circle-fill me-2"></i>Confirmer la Réservation
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
+
+<script>
+    const serviceId = @Model.Id;
+    const API_URL = `http://localhost:5004/api/Services/${serviceId}`;
+    const API_RESERVE = `http://localhost:5004/api/Services/reserve`;
+    
+    document.addEventListener("DOMContentLoaded", async () => {
+        try {
+            const response = await fetch(API_URL);
+            if (!response.ok) throw new Error("Service not found");
+            const service = await response.json();
+            renderService(service);
+            initPickers();
+        } catch (e) {
+            document.getElementById("loading").innerHTML = '<p class="text-danger">Impossible de charger les détails du service.</p>';
+        }
+    });
+
+    function renderService(data) {
+        document.getElementById("loading").classList.add("d-none");
+        document.getElementById("service-content").classList.remove("d-none");
+        
+        document.getElementById("service-name").innerText = data.nom;
+        document.getElementById("service-desc").innerText = data.description || "Aucune description.";
+        document.getElementById("service-type").innerText = data.typeService;
+        
+        if (data.prix) {
+            document.getElementById("service-price").innerText = `${data.prix} €`;
+        } else {
+            document.getElementById("service-price").innerText = "Sur devis / Gratuit";
+            // Optional: Hide price badge if strictly no price, but prompt says "n'ont pas de prix"
+            // Keeping it visible but with text is clearer.
+        }
+
+        // Images
+        let images = [];
+        try {
+            images = JSON.parse(data.imagePath);
+        } catch(e) {
+            if(data.imagePath) images = [data.imagePath];
+        }
+
+        if (images.length > 0) {
+            const mainImg = document.getElementById("main-image");
+            const getSrc = (path) => path.startsWith("http") ? path : `http://localhost:5004${path}`;
+            
+            mainImg.src = getSrc(images[0]);
+            
+            if (images.length > 1) {
+                const thumbs = document.getElementById("thumbnails");
+                images.forEach(img => {
+                    const thumb = document.createElement("img");
+                    thumb.src = getSrc(img);
+                    thumb.className = "rounded border shadow-sm opacity-75 hover-opacity-100 transition";
+                    thumb.style = "width: 100px; height: 70px; object-fit: cover; cursor: pointer;";
+                    thumb.onclick = () => {
+                        mainImg.src = getSrc(img);
+                        Array.from(thumbs.children).forEach(c => c.classList.add("opacity-75"));
+                        thumb.classList.remove("opacity-75");
+                    };
+                    thumbs.appendChild(thumb);
+                });
+                thumbs.children[0].classList.remove("opacity-75");
+            }
+        } else {
+            document.getElementById("main-image").src = "https://via.placeholder.com/800x500?text=No+Image";
+        }
+        
+        // Update button text based on price
+        const btnText = data.prix && data.prix > 0 ? "Ajouter au Panier" : "Confirmer la Réservation";
+        // Find the button (it's inside the form)
+        const btn = document.querySelector("#reservationForm button[type=submit]");
+        if(btn) {
+            btn.innerHTML = `<i class="bi bi-cart-plus-fill me-2"></i>${btnText}`;
+            if (data.prix > 0) btn.classList.replace("btn-primary", "btn-warning");
+        }
+    }
+
+    function initPickers() {
+        flatpickr("#resDate", {
+            minDate: "today",
+            dateFormat: "Y-m-d",
+            locale: "fr",
+            disableMobile: "true"
+        });
+        
+        flatpickr("#resTime", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            time_24hr: true,
+            locale: "fr",
+            disableMobile: "true"
+        });
+    }
+
+    document.getElementById("reservationForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+        if (!isLoggedIn) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Connexion requise',
+                text: 'Veuillez vous connecter pour réserver.',
+                confirmButtonColor: '#006D77'
+            }).then(() => window.location.href = "/Login");
+            return;
+        }
+
+        const date = document.getElementById("resDate").value;
+        const time = document.getElementById("resTime").value;
+
+        if (!date || !time) {
+            Swal.fire('Erreur', 'Veuillez sélectionner une date et une heure.', 'error');
+            return;
+        }
+
+        // Format time as HH:mm:00 for TimeSpan
+        const timeSpan = time.length === 5 ? time + ":00" : time;
+
+        try {
+            const res = await fetch(API_RESERVE, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    serviceId: serviceId,
+                    date: date,
+                    heure: timeSpan
+                })
+            });
+
+            if (res.ok) {
+                const result = await res.json();
+                
+                if (result.inCart) {
+                     Swal.fire({
+                        icon: 'success',
+                        title: 'Ajouté au panier !',
+                        text: 'Ce service a été ajouté à votre panier. Veuillez procéder au paiement pour confirmer.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Voir mon panier',
+                        cancelButtonText: 'Continuer',
+                        confirmButtonColor: '#006D77'
+                    }).then((r) => {
+                        if (r.isConfirmed) window.location.href = "/Panier";
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Réservation confirmée !',
+                        text: 'Votre demande a été enregistrée avec succès.',
+                        confirmButtonColor: '#006D77'
+                    });
+                }
+            } else {
+                const err = await res.text();
+                Swal.fire('Erreur', `Impossible de réserver : ${err}`, 'error');
+            }
+        } catch (e) {
+            Swal.fire('Erreur', 'Erreur de communication avec le serveur.', 'error');
+        }
+    });
+</script>
+
+<style>
+    .hover-opacity-100:hover { opacity: 1 !important; }
+    .transition { transition: opacity 0.2s; }
+</style>

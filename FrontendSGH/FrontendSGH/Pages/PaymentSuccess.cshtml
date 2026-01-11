@@ -1,0 +1,60 @@
+@page
+@model FrontendSGH.Pages.PaymentSuccessModel
+@{
+    ViewData["Title"] = "Paiement Réussi";
+}
+
+<div class="container py-5 text-center">
+    <div class="card shadow-lg border-0 p-5 mx-auto" style="max-width: 600px;">
+        <div class="mb-4 text-success">
+            <i class="bi bi-check-circle-fill display-1"></i>
+        </div>
+        <h1 class="fw-bold text-success mb-3">Paiement Réussi !</h1>
+        <p class="lead text-muted mb-4">Merci pour votre réservation. Votre paiement a été traité avec succès.</p>
+        
+        <div id="processing-message" class="alert alert-info">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            Finalisation de la commande...
+        </div>
+
+        <a href="/Index" class="btn btn-primary btn-lg rounded-pill px-5 mt-3 d-none" id="btn-home">
+            Retour à l'accueil
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+        const pointsUsed = urlParams.get('pointsUsed') || 0;
+
+        if (sessionId) {
+            try {
+                // Call backend to confirm checkout with points
+                const response = await fetch(`http://localhost:5004/api/Paniers/checkout?pointsUsed=${pointsUsed}`, {
+                    method: "POST",
+                    credentials: "include"
+                });
+
+                if (response.ok) {
+                    document.getElementById("processing-message").classList.add("d-none");
+                    document.getElementById("btn-home").classList.remove("d-none");
+                    Swal.fire({
+                        title: 'Succès !',
+                        text: 'Votre réservation est confirmée.',
+                        icon: 'success',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    document.getElementById("processing-message").innerHTML = "<span class='text-danger'>Erreur lors de la confirmation de la commande. Veuillez contacter le support.</span>";
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById("processing-message").innerHTML = "<span class='text-danger'>Erreur de connexion.</span>";
+            }
+        }
+    });
+</script>

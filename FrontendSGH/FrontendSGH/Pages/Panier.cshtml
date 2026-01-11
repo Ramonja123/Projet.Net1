@@ -1,0 +1,355 @@
+@page
+@model FrontendSGH.Pages.PanierModel
+@{
+    ViewData["Title"] = "Mon Panier";
+}
+
+<div class="container py-5">
+    <h1 class="mb-4 text-primary"><i class="bi bi-cart-fill me-2"></i>Mon Panier</h1>
+
+    <div id="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div id="empty-cart" class="d-none text-center py-5">
+        <i class="bi bi-cart-x display-1 text-muted mb-3"></i>
+        <h3>Votre panier est vide.</h3>
+        <a href="/Index" class="btn btn-primary mt-3">Parcourir les chambres</a>
+    </div>
+
+    <div id="cart-content" class="d-none">
+        <div class="row">
+            <div class="col-lg-8">
+                <div id="cart-items" class="d-grid gap-3">
+                    <!-- Items will be injected here -->
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 bg-light">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold mb-4">Résumé</h4>
+                        
+                        <!-- Loyalty Points Section -->
+                        <div id="loyalty-points-section" class="mb-4 d-none p-3 bg-white rounded border">
+                            <h6 class="fw-bold text-primary"><i class="bi bi-stars me-2"></i>Points de fidélité</h6>
+                            <p class="small text-muted mb-2">
+                                Vous avez <span id="max-points" class="fw-bold">0</span> points. 
+                                <br><span id="usable-points-info"></span>
+                            </p>
+                            
+                            <label for="points-slider" class="form-label small fw-bold">Utiliser des points : <span id="points-val-display" class="text-primary fs-5">0</span></label>
+                            <input type="range" class="form-range" id="points-slider" min="0" max="0" value="0" oninput="onPointsChange(this.value)">
+                            
+                            <div class="d-flex justify-content-between text-success mt-2 small">
+                                <span>Réduction:</span>
+                                <span id="cart-discount" class="fw-bold">-0.00 €</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2 fs-6 text-muted">
+                            <span>Sous-total :</span>
+                            <span id="cart-original-total">0.00 €</span>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-3 fs-5">
+                            <span>Total à payer :</span>
+                            <span id="cart-total" class="fw-bold text-success"></span>
+                        </div>
+                        <hr>
+                        <button id="btn-checkout" class="btn btn-success w-100 btn-lg fw-bold rounded-pill">
+                            <i class="bi bi-check-circle-fill me-2"></i>Confirmer la Réservation
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    const API_GET_CART = "http://localhost:5004/api/Paniers/active";
+    const API_REMOVE = "http://localhost:5004/api/Paniers/remove/";
+    const API_ME = "http://localhost:5004/api/Auth/me";
+
+    document.addEventListener("DOMContentLoaded", initCart);
+    
+    let currentCartTotal = 0;
+    let userPoints = 0;
+    let pointsToUse = 0;
+
+    async function initCart() {
+        await loadUserPoints();
+        await loadCart();
+    }
+
+    async function loadUserPoints() {
+        try {
+            const res = await fetch(API_ME, { credentials: "include" });
+            if (res.ok) {
+                const data = await res.json();
+                console.log("User Data:", data);
+                // Check for both PascalCase or camelCase
+                userPoints = data.PointsFidelite || data.pointsFidelite || 0; 
+                console.log("Loaded Points:", userPoints);
+            } else {
+                console.error("Failed to load user info", res.status);
+            }
+        } catch (e) {
+            console.error("Error fetching points", e);
+        }
+    }
+
+    async function loadCart() {
+        try {
+            const res = await fetch(API_GET_CART, { credentials: "include" });
+            if (res.status === 401 || res.status === 403) {
+                window.location.href = "/Login";
+                return;
+            }
+            
+            const panier = await res.json();
+            
+            document.getElementById("loading").classList.add("d-none");
+
+            if (!panier || 
+               ((!panier.reservationChambres || panier.reservationChambres.length === 0) && 
+                (!panier.reservationServices || panier.reservationServices.length === 0))) {
+                document.getElementById("empty-cart").classList.remove("d-none");
+                document.getElementById("cart-content").classList.add("d-none");
+                return;
+            }
+
+            renderCart(panier);
+        } catch (e) {
+            console.error(e);
+            document.getElementById("loading").innerHTML = "<p class='text-danger'>Erreur de chargement ou panier vide.</p>";
+             if(e instanceof SyntaxError) { 
+                 document.getElementById("loading").classList.add("d-none");
+                 document.getElementById("empty-cart").classList.remove("d-none");
+             }
+        }
+    }
+
+    function renderCart(panier) {
+        console.log("Panier received:", panier);
+        const container = document.getElementById("cart-items");
+        container.innerHTML = "";
+        
+        let calculatedTotal = 0;
+
+        // Handle Case Sensitivity
+        const rooms = panier.reservationChambres || panier.ReservationChambres || [];
+        const services = panier.reservationServices || panier.ReservationServices || [];
+
+        // Render Rooms
+        if (rooms.length > 0) {
+            rooms.forEach(item => {
+                calculatedTotal += item.prixTotal || item.PrixTotal;
+                const formatDateStr = (dateStr) => {
+                    if (!dateStr) return "";
+                    const datePart = dateStr.split('T')[0];
+                    const [y, m, d] = datePart.split('-');
+                    return `${d}/${m}/${y}`;
+                };
+
+                const start = formatDateStr(item.dateDebut || item.DateDebut);
+                const end = formatDateStr(item.dateFin || item.DateFin);
+                const typeNom = item.chambre?.typeChambre?.nom || item.Chambre?.TypeChambre?.Nom || "Chambre";
+
+                const html = `
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h5 class="fw-bold text-primary mb-1">${typeNom}</h5>
+                                <p class="text-muted mb-0">
+                                    <i class="bi bi-door-closed me-2"></i>Chambre - ${start} au ${end}
+                                </p>
+                            </div>
+                            <div class="text-end me-4">
+                                <span class="fs-5 fw-bold">${(item.prixTotal || item.PrixTotal).toFixed(2)} €</span>
+                            </div>
+                            <button onclick="removeItem(${item.id || item.Id}, 'room')" class="btn btn-outline-danger btn-sm rounded-circle" title="Supprimer">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        // Render Services
+        if (services.length > 0) {
+            services.forEach(item => {
+                const prix = item.prix || item.Prix || 0;
+                calculatedTotal += prix;
+                
+                const dateVal = item.date || item.Date;
+                const dateStr = dateVal ? new Date(dateVal).toLocaleDateString() : "Date inconnue";
+                const heure = item.heure || item.Heure || "";
+                const serviceNom = item.service?.nom || item.Service?.Nom || "Service";
+
+                const html = `
+                    <div class="card shadow-sm border-0 border-start border-4 border-warning">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h5 class="fw-bold text-dark mb-1">${serviceNom}</h5>
+                                <p class="text-muted mb-0">
+                                    <i class="bi bi-gear me-2"></i>Service - ${dateStr} à ${heure}
+                                </p>
+                            </div>
+                            <div class="text-end me-4">
+                                <span class="fs-5 fw-bold">${prix.toFixed(2)} €</span>
+                            </div>
+                            <button onclick="removeItem(${item.id || item.Id}, 'service')" class="btn btn-outline-danger btn-sm rounded-circle" title="Supprimer">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        currentCartTotal = calculatedTotal;
+        updateSummary();
+
+        document.getElementById("cart-content").classList.remove("d-none");
+        document.getElementById("empty-cart").classList.add("d-none");
+    }
+
+    function updateSummary() {
+        const pointsSection = document.getElementById("loyalty-points-section");
+        pointsSection.classList.remove("d-none"); // Always show
+        
+        let maxPointsUsable = 0;
+        
+        if(userPoints > 0) {
+            // Logic: 1 point = 1 euro discount. Max discount = cart total.
+            maxPointsUsable = Math.min(userPoints, Math.floor(currentCartTotal));
+            
+            document.getElementById("max-points").innerText = userPoints;
+            document.getElementById("usable-points-info").innerText = `(Max utilisable: ${maxPointsUsable} pts = -${maxPointsUsable}€)`;
+            
+            const slider = document.getElementById("points-slider");
+            slider.disabled = false;
+            
+            // Set max attributes
+            slider.max = maxPointsUsable;
+            // If current slider value exceeds max (e.g. if cart total decreased), clamp it
+            if(parseInt(slider.value) > maxPointsUsable) {
+                slider.value = maxPointsUsable;
+                pointsToUse = maxPointsUsable;
+            }
+        } else {
+            document.getElementById("max-points").innerText = "0";
+            document.getElementById("usable-points-info").innerText = "(Vous n'avez pas de points)";
+            const slider = document.getElementById("points-slider");
+            slider.value = 0;
+            slider.disabled = true;
+            pointsToUse = 0;
+        }
+
+        const discount = pointsToUse * 1; // 1 point = 1 euro
+        const finalTotal = Math.max(0, currentCartTotal - discount);
+
+        document.getElementById("cart-original-total").innerText = `${currentCartTotal.toFixed(2)} €`;
+        document.getElementById("cart-discount").innerText = `-${discount.toFixed(2)} €`;
+        document.getElementById("cart-total").innerText = `${finalTotal.toFixed(2)} €`;
+        
+        // Update input/slider sync visuals
+        document.getElementById("points-val-display").innerText = pointsToUse;
+    }
+
+    function onPointsChange(val) {
+        pointsToUse = parseInt(val);
+        updateSummary();
+    }
+    
+    async function removeItem(id, type) {
+        const result = await Swal.fire({
+            title: 'Êtes-vous sûr ?',
+            text: "Voulez-vous vraiment supprimer cet article ?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Oui, supprimer !',
+            cancelButtonText: 'Annuler'
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            let url = API_REMOVE + id; 
+            if (type === 'service') {
+                url = "http://localhost:5004/api/Paniers/remove-service/" + id;
+            }
+
+            const res = await fetch(url, { 
+                method: "DELETE",
+                credentials: "include" 
+            });
+            
+            if (res.ok) {
+                Swal.fire(
+                    'Supprimé !',
+                    'L\'article a été supprimé.',
+                    'success'
+                );
+                loadCart(); 
+            } else {
+                Swal.fire('Erreur', 'Erreur lors de la suppression.', 'error');
+            }
+        } catch(e) {
+            Swal.fire('Erreur', 'Erreur serveur.', 'error');
+        }
+    }
+
+    document.getElementById("btn-checkout").addEventListener("click", async () => {
+        const result = await Swal.fire({
+            title: 'Payer la réservation ?',
+            text: `Total à payer : ${document.getElementById("cart-total").innerText}`,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#6772e5',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Payer avec Stripe',
+            cancelButtonText: 'Annuler'
+        });
+
+        if (!result.isConfirmed) return;
+
+        const stripe = Stripe("pk_test_51RSSYsCNLclSDpYDlg569hKRFQY29HiRB1kCELYb19YNfsIZLn95oopLggaAwaBK9rTCXtbYkgZYdNLRGXi24RsL00TJX9iFV2");
+
+        try {
+            // Pass pointsUsed in the query string or body. Stripe session endpoint needs to accept it.
+            const response = await fetch(`http://localhost:5004/api/Paniers/create-checkout-session?pointsUsed=${pointsToUse}`, {
+                method: "POST",
+                credentials: "include"
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                Swal.fire('Erreur Backend', `Erreur: ${response.status} - ${errorText}`, 'error');
+                return;
+            }
+
+            const session = await response.json();
+
+            if (session.id) {
+                const result = await stripe.redirectToCheckout({ sessionId: session.id });
+                if (result.error) {
+                    Swal.fire('Erreur Stripe', result.error.message, 'error');
+                }
+            } else {
+                Swal.fire('Erreur', 'Impossible de créer la session de paiement.', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erreur de connexion', 'Impossible de contacter le serveur.', 'error');
+        }
+    });
+</script>

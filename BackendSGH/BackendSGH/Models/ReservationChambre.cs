@@ -14,8 +14,10 @@ namespace BackendSGH.Models{
     
     public DateTime DateCreation { get; set; } 
 
-    public int ClientId { get; set; } 
+    public int? ClientId { get; set; } 
     public Client Client { get; set; }
+
+    public string NomClientNonInscrit { get; set; }
 
     public int ChambreId { get; set; }
     public Chambre Chambre { get; set; }

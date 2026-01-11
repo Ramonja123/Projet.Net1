@@ -23,7 +23,8 @@ namespace BackendSGH.Models.Dtos
         public DateTime? DateNaissance { get; set; }
 
         // Champs spécifiques Responsable
-    
         public string? RoleEmploye { get; set; } 
+        public int? ServiceId { get; set; }
+        public bool IsResponsableChambre { get; set; }
     }
 }

@@ -1,0 +1,171 @@
+@page
+@model FrontendSGH.Pages.MesReservationsModel
+@{
+    ViewData["Title"] = "Mes Réservations";
+}
+
+<div class="container py-5">
+    <h1 class="mb-4 text-primary"><i class="bi bi-calendar-check-fill me-2"></i>Mes Réservations</h1>
+
+    <div id="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div id="empty-list" class="d-none text-center py-5">
+        <i class="bi bi-calendar-x display-1 text-muted mb-3"></i>
+        <h3>Aucune réservation trouvée.</h3>
+        <a href="/Index" class="btn btn-primary mt-3">Réserver une chambre</a>
+    </div>
+
+    <!-- Room Reservations Section -->
+    <div id="rooms-section" class="d-none mb-5">
+        <h3 class="mb-3 text-secondary border-bottom pb-2"><i class="bi bi-door-open me-2"></i>Chambres</h3>
+        <div id="reservations-list" class="row g-4"></div>
+    </div>
+
+    <!-- Service Reservations Section -->
+    <div id="services-section" class="d-none">
+        <h3 class="mb-3 text-secondary border-bottom pb-2"><i class="bi bi-gear me-2"></i>Services</h3>
+        <div id="services-list" class="row g-4"></div>
+    </div>
+</div>
+
+<script>
+    const API_ROOMS = "http://localhost:5004/api/Reservations/my-reservations";
+    const API_SERVICES = "http://localhost:5004/api/Services/my-reservations";
+
+    document.addEventListener("DOMContentLoaded", loadAllReservations);
+
+    async function loadAllReservations() {
+        try {
+            const [resRooms, resServices] = await Promise.all([
+                fetch(API_ROOMS, { credentials: "include" }),
+                fetch(API_SERVICES, { credentials: "include" })
+            ]);
+
+            if (resRooms.status === 401 || resRooms.status === 403) {
+                window.location.href = "/Login";
+                return;
+            }
+
+            const rooms = await resRooms.json();
+            const services = await resServices.json();
+
+            document.getElementById("loading").classList.add("d-none");
+
+            const hasRooms = rooms && rooms.length > 0;
+            const hasServices = services && services.length > 0;
+
+            if (!hasRooms && !hasServices) {
+                document.getElementById("empty-list").classList.remove("d-none");
+                return;
+            }
+
+            if (hasRooms) {
+                renderRooms(rooms);
+                document.getElementById("rooms-section").classList.remove("d-none");
+            }
+            
+            if (hasServices) {
+                renderServices(services);
+                document.getElementById("services-section").classList.remove("d-none");
+            }
+
+        } catch (e) {
+            console.error(e);
+            document.getElementById("loading").innerHTML = "<p class='text-danger'>Erreur de chargement. Vérifiez que le serveur est démarré.</p>";
+        }
+    }
+
+    function renderRooms(reservations) {
+        const container = document.getElementById("reservations-list");
+        container.innerHTML = "";
+        
+        reservations.forEach(item => {
+            const dateStr = (d) => new Date(d).toLocaleDateString();
+            
+            // Image handling
+            let imageSrc = "https://via.placeholder.com/400x250?text=Chambre";
+            try {
+                if (item.image) {
+                    const images = JSON.parse(item.image);
+                    if (Array.isArray(images) && images.length > 0) {
+                        imageSrc = "http://localhost:5004" + images[0];
+                    }
+                }
+            } catch (e) {}
+
+            const html = `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <img src="${imageSrc}" class="card-img-top" alt="${item.typeChambre}" style="height: 200px; object-fit: cover;">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title fw-bold text-primary">${item.typeChambre}</h5>
+                                <span class="badge bg-success">Confirmée</span>
+                            </div>
+                            <p class="card-text text-muted mb-1">
+                                <i class="bi bi-door-closed-fill me-2"></i>Chambre N° ${item.chambreNumero}
+                            </p>
+                            <p class="card-text text-muted mb-3">
+                                <i class="bi bi-calendar-event me-2"></i>${dateStr(item.dateDebut)} - ${dateStr(item.dateFin)}
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                                <span class="text-muted">Total Payé</span>
+                                <span class="fs-5 fw-bold text-dark">${item.prixTotal.toFixed(2)} €</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += html;
+        });
+    }
+
+    function renderServices(reservations) {
+        const container = document.getElementById("services-list");
+        container.innerHTML = "";
+        
+        reservations.forEach(item => {
+            const dateStr = new Date(item.date).toLocaleDateString();
+            
+             // Image handling
+            let imageSrc = "https://via.placeholder.com/400x250?text=Service";
+            try {
+                if (item.image) {
+                    const images = JSON.parse(item.image);
+                    if (Array.isArray(images) && images.length > 0) {
+                        imageSrc = "http://localhost:5004" + images[0];
+                    }
+                }
+            } catch (e) {}
+
+            const html = `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0">
+                         <img src="${imageSrc}" class="card-img-top" alt="${item.serviceNom}" style="height: 200px; object-fit: cover;">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title fw-bold text-info text-dark">${item.serviceNom}</h5>
+                                <span class="badge bg-info text-dark">Confirmée</span>
+                            </div>
+                            <p class="card-text text-muted mb-1">
+                                <i class="bi bi-clock me-2"></i>${item.heure}
+                            </p>
+                            <p class="card-text text-muted mb-3">
+                                <i class="bi bi-calendar-event me-2"></i>${dateStr}
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                                <span class="text-muted">Prix</span>
+                                <span class="fs-5 fw-bold text-dark">${item.prix ? item.prix.toFixed(2) + ' €' : 'Inclus'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += html;
+        });
+    }
+</script>

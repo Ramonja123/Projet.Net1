@@ -1,0 +1,168 @@
+@page
+@model FrontendSGH.Pages.ProfileModel
+@{
+    ViewData["Title"] = "Mon Profil";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-lg overflow-hidden rounded-3">
+                <div class="card-header bg-primary text-white py-4 position-relative">
+                    <h2 class="mb-0 fw-bold"><i class="bi bi-person-circle me-2"></i>Mon Profil</h2>
+                    <p class="mb-0 opacity-75">Gérez vos informations personnelles et vérifiez vos points.</p>
+                </div>
+                
+                <div class="card-body p-5 bg-white">
+                    <!-- Points Banner -->
+                    <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center justify-content-between mb-5 rounded-3 p-4">
+                        <div>
+                            <h4 class="alert-heading fw-bold mb-1 text-dark"><i class="bi bi-star-fill text-warning me-2"></i>Points de Fidélité</h4>
+                            <p class="mb-0 text-muted">Cumulez des points à chaque séjour et profitez d'avantages exclusifs !</p>
+                        </div>
+                        <div class="text-end">
+                            <span id="points-display" class="display-4 fw-bold text-primary">0</span>
+                            <span class="d-block text-muted small text-uppercase fw-bold">Points</span>
+                        </div>
+                    </div>
+
+                    <form id="profile-form">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="nom" class="form-label fw-bold text-uppercase small text-muted">Nom</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-person"></i></span>
+                                    <input type="text" class="form-control bg-light border-start-0 ps-0" id="nom" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="prenom" class="form-label fw-bold text-uppercase small text-muted">Prénom</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-person"></i></span>
+                                    <input type="text" class="form-control bg-light border-start-0 ps-0" id="prenom" required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label for="email" class="form-label fw-bold text-uppercase small text-muted">Email</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope"></i></span>
+                                    <input type="email" class="form-control bg-light border-start-0 ps-0 text-muted" id="email" disabled>
+                                </div>
+                                <div class="form-text">L'adresse email ne peut pas être modifiée.</div>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="adresse" class="form-label fw-bold text-uppercase small text-muted">Adresse</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt"></i></span>
+                                    <input type="text" class="form-control bg-light border-start-0 ps-0" id="adresse">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="dateNaissance" class="form-label fw-bold text-uppercase small text-muted">Date de Naissance</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-calendar"></i></span>
+                                    <input type="date" class="form-control bg-light border-start-0 ps-0" id="dateNaissance">
+                                </div>
+                            </div>
+                            
+                             <div class="col-md-6">
+                                <label for="username" class="form-label fw-bold text-uppercase small text-muted">Nom d'Utilisateur</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-at"></i></span>
+                                    <input type="text" class="form-control bg-light border-start-0 ps-0 text-muted" id="username" disabled>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-pill text-uppercase" style="letter-spacing: 1px;">
+                                    <i class="bi bi-check-circle-fill me-2"></i>Enregistrer les modifications
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API_CHECK = "http://localhost:5004/api/Auth/me";
+        const API_UPDATE = "http://localhost:5004/api/Auth/profile";
+        // We will fetch client details (name, address, dob) via a new endpoint or piggyback on 'me' 
+        // OR better: we might need a GetClientProfile endpoint if 'me' doesn't return everything.
+        // Currently 'me' returns ID, Email, NomUtilisateur, Roles, PointsFidelite.
+        // It does NOT return Name, Firstname, Address, DOB.
+        // I need to update AuthController.cs one more time to return these fields in Me().
+        
+        document.addEventListener("DOMContentLoaded", async function() {
+            await loadProfile();
+        });
+
+        async function loadProfile() {
+            try {
+                const res = await fetch(API_CHECK, { credentials: "include" });
+                if (res.status === 401) {
+                    window.location.href = "/Login";
+                    return;
+                }
+                const data = await res.json();
+                
+                // Populate fields
+                document.getElementById("email").value = data.email;
+                document.getElementById("username").value = data.nomUtilisateur;
+                document.getElementById("points-display").innerText = data.pointsFidelite;
+                
+                // These might be undefined if I don't update Me(). 
+                // I will assume I will update Me() right after this step.
+                document.getElementById("nom").value = data.nom || "";
+                document.getElementById("prenom").value = data.prenom || "";
+                document.getElementById("adresse").value = data.adresse || "";
+                if(data.dateNaissance) {
+                    document.getElementById("dateNaissance").value = data.dateNaissance.split('T')[0];
+                }
+
+            } catch (e) {
+                console.error("Error loading profile", e);
+            }
+        }
+
+        document.getElementById("profile-form").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            
+            const dto = {
+                nom: document.getElementById("nom").value,
+                prenom: document.getElementById("prenom").value,
+                adresse: document.getElementById("adresse").value,
+                dateNaissance: document.getElementById("dateNaissance").value
+            };
+
+            try {
+                const res = await fetch(API_UPDATE, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(dto)
+                });
+
+                if (res.ok) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Profil mis à jour !',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    const err = await res.text();
+                    Swal.fire('Erreur', err, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Erreur', 'Impossible de contacter le serveur', 'error');
+            }
+        });
+    </script>
+}

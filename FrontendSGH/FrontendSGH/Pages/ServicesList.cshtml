@@ -1,0 +1,139 @@
+@page
+@model FrontendSGH.Pages.ServicesListModel
+@{
+    ViewData["Title"] = "Nos Services";
+}
+
+<div class="container mt-5 pt-5">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold display-4 text-primary">Découvrez Nos Services</h1>
+        <p class="text-muted lead">Des expériences uniques pour agrémenter votre séjour.</p>
+    </div>
+
+    <div class="d-flex justify-content-end mb-4">
+        <div class="dropdown">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-sort-down"></i> Trier par
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                <li><a class="dropdown-item" href="#" onclick="sortServices('priceAsc')">Prix croissant</a></li>
+                <li><a class="dropdown-item" href="#" onclick="sortServices('priceDesc')">Prix décroissant</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="row g-5" id="services-container">
+        <!-- Content loaded via JS -->
+        <div class="col-12 text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+    }
+    .animate-up {
+        animation: fadeInUp 0.8s ease-out forwards;
+    }
+    @@keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<script>
+    let allServices = [];
+    const API_URL = "http://localhost:5004/api/Services";
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadServices();
+    });
+
+    async function loadServices() {
+        const container = document.getElementById("services-container");
+        try {
+            const response = await fetch(API_URL);
+            allServices = await response.json();
+            renderServices(allServices);
+        } catch (e) {
+            container.innerHTML = '<div class="col-12 text-center text-danger">Impossible de charger les services.</div>';
+        }
+    }
+
+    function renderServices(services) {
+        const container = document.getElementById("services-container");
+        if (services.length === 0) {
+            container.innerHTML = '<div class="col-12 text-center">Aucun service disponible.</div>';
+            return;
+        }
+
+        container.innerHTML = "";
+        services.forEach(service => {
+            let imagePath = "https://via.placeholder.com/800x400?text=Service";
+            
+            // Handle JSON image path or simple string
+            if (service.imagePath) {
+                try {
+                    const images = JSON.parse(service.imagePath);
+                    if (Array.isArray(images) && images.length > 0) {
+                        imagePath = "http://localhost:5004" + images[0];
+                    }
+                } catch (e) {
+                    if (!service.imagePath.startsWith("[")) {
+                        imagePath = "http://localhost:5004" + service.imagePath;
+                    }
+                }
+            }
+
+            const prixDisplay = service.prix ? `${service.prix} €` : "Sur devis";
+            const icon = service.typeService === "Restauration" ? "bi-cup-hot-fill" : 
+                         service.typeService === "Bien-être" ? "bi-heart-pulse-fill" : "bi-star-fill";
+
+            const card = `
+                <div class="col-12 animate-up">
+                    <div class="card shadow-lg hover-card overflow-hidden border-0">
+                        <div class="row g-0">
+                            <div class="col-md-5">
+                                <img src="${imagePath}" class="img-fluid h-100 w-100" style="object-fit: cover; min-height: 250px;" alt="${service.nom}">
+                            </div>
+                            <div class="col-md-7 d-flex align-items-center">
+                                <div class="card-body p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h3 class="card-title fw-bold mb-0 text-primary">${service.nom}</h3>
+                                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6">${prixDisplay}</span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <span class="badge bg-info text-dark"><i class="bi ${icon} me-1"></i>${service.typeService}</span>
+                                    </div>
+                                    <p class="card-text text-muted lead mb-4">${service.description || "Description non disponible."}</p>
+                                    <div class="d-grid gap-2 d-md-block">
+                                        <a href="/ServiceDetails/${service.id}" class="btn btn-primary rounded-pill px-4">En savoir plus & Réserver</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += card;
+        });
+    }
+
+    function sortServices(criteria) {
+        let sorted = [...allServices];
+        if (criteria === 'priceAsc') {
+            sorted.sort((a, b) => (a.prix || 0) - (b.prix || 0));
+        } else if (criteria === 'priceDesc') {
+            sorted.sort((a, b) => (b.prix || 0) - (a.prix || 0));
+        }
+        renderServices(sorted);
+    }
+</script>

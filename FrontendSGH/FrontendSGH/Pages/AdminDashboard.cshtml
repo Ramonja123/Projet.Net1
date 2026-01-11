@@ -1,0 +1,117 @@
+@page
+@model FrontendSGH.Pages.AdminDashboardModel
+@{
+    ViewData["Title"] = "Tableau de Bord Administrateur";
+    Layout = "_AdminLayout";
+}
+
+<div class="container mt-5">
+    <h1 class="text-center mb-5 text-primary">Tableau de Bord <span id="dashTitle"></span></h1>
+
+    <div class="row g-4">
+        <!-- Carte Responsables (Admin Only) -->
+        <div class="col-md-3 d-none" id="cardResponsables">
+            <div class="card h-100 shadow-sm border-0 hover-card">
+                <div class="card-body text-center">
+                    <div class="display-4 text-info mb-3"><i class="bi bi-people-fill"></i></div>
+                    <h3 class="card-title">Responsables</h3>
+                    <p class="card-text text-muted">Gérer les comptes employés, les rôles et les accès.</p>
+                    <a href="/Responsables" class="btn btn-outline-info stretched-link">Gérer</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carte Chambres -->
+        <div class="col-md-3 d-none" id="cardChambres">
+            <div class="card h-100 shadow-sm border-0 hover-card">
+                <div class="card-body text-center">
+                    <div class="display-4 text-success mb-3"><i class="bi bi-door-open-fill"></i></div>
+                    <h3 class="card-title">Chambres</h3>
+                    <p class="card-text text-muted">Ajouter, modifier ou supprimer des chambres et leur état.</p>
+                    <a href="/Chambres" class="btn btn-outline-success stretched-link">Gérer</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carte Types Chambres -->
+        <div class="col-md-3 d-none" id="cardTypes">
+            <div class="card h-100 shadow-sm border-0 hover-card">
+                <div class="card-body text-center">
+                    <div class="display-4 text-primary mb-3"><i class="bi bi-house-gear-fill"></i></div>
+                    <h3 class="card-title">Types Chambres</h3>
+                    <p class="card-text text-muted">Gérer les catégories et tarifs.</p>
+                    <a href="/TypeChambres" class="btn btn-outline-primary stretched-link">Gérer</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carte Services -->
+        <div class="col-md-3 d-none" id="cardServices">
+            <div class="card h-100 shadow-sm border-0 hover-card">
+                <div class="card-body text-center">
+                    <div class="display-4 text-warning mb-3"><i class="bi bi-gear-fill"></i></div>
+                    <h3 class="card-title">Services</h3>
+                    <p class="card-text text-muted">Gérer les services de l'hôtel.</p>
+                    <a href="/Services" class="btn btn-outline-warning stretched-link">Gérer</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carte Réservations -->
+        <div class="col-md-3 d-none" id="cardReservations">
+            <div class="card h-100 shadow-sm border-0 hover-card">
+                <div class="card-body text-center">
+                    <div class="display-4 text-danger mb-3"><i class="bi bi-calendar-check-fill"></i></div>
+                    <h3 class="card-title">Réservations</h3>
+                    <p class="card-text text-muted">Gérer les réservations clients.</p>
+                    <a href="/DashboardReservations" class="btn btn-outline-danger stretched-link">Gérer</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-card:hover {
+        transform: translateY(-5px);
+        transition: transform 0.3s ease;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        try {
+            const res = await fetch("http://localhost:5004/api/Responsables/me", { credentials: "include" });
+            if (!res.ok) return;
+            const me = await res.json();
+
+            const isAdmin = me.role.endsWith("/ADMIN");
+            const isChambre = me.isResponsableChambre;
+            const isService = me.serviceId != null;
+
+            // Show Reservations for everyone
+            document.getElementById("cardReservations").classList.remove("d-none");
+
+            if (isAdmin) {
+                document.getElementById("cardResponsables").classList.remove("d-none");
+                document.getElementById("cardChambres").classList.remove("d-none");
+                document.getElementById("cardTypes").classList.remove("d-none");
+                document.getElementById("cardServices").classList.remove("d-none");
+                document.getElementById("dashTitle").innerText = "Administrateur";
+            } else {
+                if (isChambre) {
+                    document.getElementById("cardChambres").classList.remove("d-none");
+                    document.getElementById("cardTypes").classList.remove("d-none");
+                    document.getElementById("dashTitle").innerText = "Responsable Chambres";
+                }
+                if (isService) {
+                    document.getElementById("cardServices").classList.remove("d-none");
+                    document.getElementById("dashTitle").innerText = "Responsable Service (" + me.serviceName + ")";
+                }
+            }
+        } catch (e) {
+            console.error("Erreur chargement profil", e);
+        }
+    });
+</script>

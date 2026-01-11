@@ -11,7 +11,7 @@ namespace BackendSGH.Models{
 
     public string Etat { get; set; } 
     
-    public int Etage { get; set; } 
+ 
 
     public int TypeChambreId { get; set; } 
     public TypeChambre TypeChambre { get; set; }

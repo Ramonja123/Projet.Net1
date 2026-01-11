@@ -1,0 +1,143 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Nos Chambres";
+}
+
+<div class="container mt-5 pt-5">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold display-4 text-primary">Découvrez Nos Chambres</h1>
+        <p class="text-muted lead">Un confort inégalé pour un séjour inoubliable.</p>
+    </div>
+
+    <div class="d-flex justify-content-end mb-4">
+        <div class="dropdown">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-sort-down"></i> Trier par
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                <li><a class="dropdown-item" href="#" onclick="sortRooms('priceAsc')">Prix croissant</a></li>
+                <li><a class="dropdown-item" href="#" onclick="sortRooms('priceDesc')">Prix décroissant</a></li>
+                <li><a class="dropdown-item" href="#" onclick="sortRooms('capacityDesc')">Capacité</a></li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="row g-5" id="rooms-container">
+        <!-- Content loaded via JS -->
+        <div class="col-12 text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+    }
+    .animate-up {
+        animation: fadeInUp 0.8s ease-out forwards;
+    }
+    @@keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<script>
+    let allRooms = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadRooms();
+    });
+
+    async function loadRooms() {
+        const container = document.getElementById("rooms-container");
+        const urlParams = new URLSearchParams(window.location.search);
+        const dateArrivee = urlParams.get('dateArrivee');
+        const dateDepart = urlParams.get('dateDepart');
+        const capacite = urlParams.get('capacite');
+
+        let apiUrl = "http://localhost:5004/api/TypeChambres";
+        if (dateArrivee && dateDepart) {
+            apiUrl = `http://localhost:5004/api/TypeChambres/search?dateArrivee=${dateArrivee}&dateDepart=${dateDepart}`;
+            if (capacite) {
+                apiUrl += `&capacite=${capacite}`;
+            }
+        }
+
+        try {
+            const response = await fetch(apiUrl);
+            allRooms = await response.json();
+            renderRooms(allRooms);
+        } catch (e) {
+            container.innerHTML = '<div class="col-12 text-center text-danger">Impossible de charger les chambres.</div>';
+        }
+    }
+
+    function renderRooms(rooms) {
+        const container = document.getElementById("rooms-container");
+        if (rooms.length === 0) {
+            container.innerHTML = '<div class="col-12 text-center">Aucune chambre disponible.</div>';
+            return;
+        }
+
+        container.innerHTML = "";
+        rooms.forEach(room => {
+            let imagePath = "https://via.placeholder.com/800x400";
+            try {
+                const images = JSON.parse(room.imagePath);
+                if (images.length > 0) imagePath = "http://localhost:5004" + images[0];
+            } catch(e) {
+                if (room.imagePath) imagePath = "http://localhost:5004" + room.imagePath;
+            }
+
+            const card = `
+                <div class="col-12 animate-up">
+                    <div class="card shadow-lg hover-card overflow-hidden border-0">
+                        <div class="row g-0">
+                            <div class="col-md-6">
+                                <img src="${imagePath}" class="img-fluid h-100 w-100" style="object-fit: cover; min-height: 300px;" alt="${room.nom}">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                                <div class="card-body p-5">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h3 class="card-title fw-bold mb-0 text-primary">${room.nom}</h3>
+                                        <span class="badge bg-warning text-dark fs-5 px-3 py-2 rounded-pill">${room.tarif} € / Nuit</span>
+                                    </div>
+                                    <div class="mb-4">
+                                        ${room.vue ? `<span class="badge bg-info text-dark me-2"><i class="bi bi-eye-fill me-1"></i>${room.vue}</span>` : ''}
+                                        <span class="badge bg-secondary"><i class="bi bi-people-fill me-1"></i>${room.capacite} Personnes</span>
+                                    </div>
+                                    <p class="card-text text-muted lead mb-4">${room.description || "Description non disponible."}</p>
+                                    <div class="d-grid gap-2">
+                                        <a href="/RoomDetails/${room.id}" class="btn btn-primary btn-lg rounded-pill">Voir les Détails & Réserver</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += card;
+        });
+    }
+
+    function sortRooms(criteria) {
+        let sorted = [...allRooms];
+        if (criteria === 'priceAsc') {
+            sorted.sort((a, b) => a.tarif - b.tarif);
+        } else if (criteria === 'priceDesc') {
+            sorted.sort((a, b) => b.tarif - a.tarif);
+        } else if (criteria === 'capacityDesc') {
+            sorted.sort((a, b) => b.capacite - a.capacite);
+        }
+        renderRooms(sorted);
+    }
+</script>
